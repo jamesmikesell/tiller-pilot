@@ -1,0 +1,43 @@
+.connect-container {
+  margin-left: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.slider {
+  width: 100%;
+  max-width: 300px;
+}
+
+
+.small-input {
+  width: 100px;
+}
+
+.manual-controls {
+  margin-top: 60px !important;
+}
+
+.manual-controls>button {
+  transform: scale(1.5);
+}
+
+.center-controls {
+  margin-top: 20px;
+  display: flex;
+  place-content: space-around;
+  max-width: 532px;
+}
+
+.charts {
+  margin-top: 10px;
+}
+
+.data-controls {
+  display: flex;
+  place-content: space-between;
+  margin-top: 60px;
+  margin-left: 10px;
+  margin-right: 10px;
+  flex-flow: wrap;
+}

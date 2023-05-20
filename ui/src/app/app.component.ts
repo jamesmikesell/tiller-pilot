@@ -8,4 +8,6 @@ import { AppVersion } from './app-version';
 })
 export class AppComponent {
   AppVersion = AppVersion;
+
 }
+
