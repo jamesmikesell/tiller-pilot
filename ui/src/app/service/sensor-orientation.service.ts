@@ -1,13 +1,12 @@
 import { HostListener, Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SensorOrientationService {
 
-  current = 0
-  update = new Subject<void>();
+  heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, 0));
 
   private lastUpdateTime = Date.now();
 
@@ -16,11 +15,15 @@ export class SensorOrientationService {
   }
 
   orientationChanged(event: DeviceOrientationEvent): void {
-    if (Date.now() - this.lastUpdateTime > 200 && event.absolute) {
-      this.lastUpdateTime = Date.now();
-      this.current = event.alpha;
-      this.update.next();
-    }
+    this.heading.next(new HeadingAndTime(event.timeStamp, event.alpha));
   }
 
+}
+
+
+export class HeadingAndTime {
+  constructor(
+    public time: number,
+    public heading: number,
+  ) { }
 }

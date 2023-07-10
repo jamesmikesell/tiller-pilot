@@ -4,56 +4,13 @@
 
 
 <div>
-  Heading Current: {{sensorOrientation.current | number:'1.0-0'}} <br>
+  Heading Current: {{sensorOrientation.heading.value.heading | number:'1.0-0'}} <br>
   Heading Avg: {{controllerOrientation.getAverageHeading() | number:'1.0-0'}} <br>
   Heading Desired: {{controllerOrientation.desired | number:'1.0-0'}} <br>
   Controllers: Rotation: {{controllerRotationRate.enabled ? "on" : "off"}} Orientation: {{controllerOrientation.enabled
   ? "on" : "off"}} <br>
-  Speed (kt): {{sensorGpsService.getSpeedKt() | number:'1.2-2'}} <br>
+  Speed (kt): {{sensorLocation.getSpeedKt() | number:'1.2-2'}} <br>
 </div>
-
-
-
-<button mat-raised-button color="primary" (click)="copyResults()">Copy PID Values</button>
-
-
-
-<div class="input-list">
-  <mat-form-field class="small-input">
-    <mat-label>Rot. Rt. Proportional</mat-label>
-    <input matInput type="number" [(ngModel)]="controllerRotationRate.kP">
-  </mat-form-field>
-
-  <mat-form-field class="small-input">
-    <mat-label>Rot. Rt. Integral</mat-label>
-    <input matInput type="number" [(ngModel)]="controllerRotationRate.kI">
-  </mat-form-field>
-
-  <mat-form-field class="small-input">
-    <mat-label>Rot. Rt. Derivative</mat-label>
-    <input matInput type="number" [(ngModel)]="controllerRotationRate.kD">
-  </mat-form-field>
-</div>
-
-
-<div class="input-list">
-  <mat-form-field class="small-input">
-    <mat-label>Orient. Proportional</mat-label>
-    <input matInput type="number" [(ngModel)]="controllerOrientation.kP">
-  </mat-form-field>
-
-  <mat-form-field class="small-input">
-    <mat-label>Orient. Integral</mat-label>
-    <input matInput type="number" [(ngModel)]="controllerOrientation.kI">
-  </mat-form-field>
-
-  <mat-form-field class="small-input">
-    <mat-label>Orient. Derivative</mat-label>
-    <input matInput type="number" [(ngModel)]="controllerOrientation.kD">
-  </mat-form-field>
-</div>
-
-
 
 
 
@@ -66,11 +23,15 @@
 
 
 
-<div *ngIf="showGraphs" class="charts">
-  <app-chart [data]="chartGpsHeading"></app-chart>
-  <app-chart [data]="chartNavigation"></app-chart>
-  <app-chart [data]="chartOrientation"></app-chart>
-  <app-chart [data]="chartDataRotationRate"></app-chart>
+<div class="charts">
+  <app-chart *ngIf="configService.config.showGraphGps" [data]="chartGpsHeading" title="GPS Heading">
+  </app-chart>
+  <app-chart *ngIf="configService.config.showGraphDistanceFromLine" [data]="chartNavigation" title="GPS Path Controller">
+  </app-chart>
+  <app-chart *ngIf="configService.config.showGraphOrientation" [data]="chartOrientation" title="Orientation Controller (Zero is Set Point)">
+  </app-chart>
+  <app-chart *ngIf="configService.config.showGraphRotation" [data]="chartDataRotationRate" title="Rotation Rate Controller">
+  </app-chart>
 </div>
 
 
@@ -88,31 +49,28 @@
 </div>
 
 
+<div class="config-container">
+  <mat-accordion>
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          Config
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <app-config></app-config>
+    </mat-expansion-panel>
+  </mat-accordion>
+</div>
+
 
 <div class="data-controls">
-  <button mat-raised-button color="primary" (click)="downloadLog()">Download Log</button>
-
-  <mat-form-field>
-    <mat-label>Clear Log Safety</mat-label>
-    <input matInput type="text" [(ngModel)]="clearDataString">
-    <mat-hint>Type "clear" and hit button</mat-hint>
-  </mat-form-field>
-
-  <button mat-raised-button color="primary" (click)="clearData()" [disabled]="!canClear()">Clear Data</button>
-
-  <mat-slide-toggle [(ngModel)]="loggingEnabled">Save Logs Between Refreshes</mat-slide-toggle>
-
-  <mat-slide-toggle [(ngModel)]="showGraphs">
-    Show Graphs
-  </mat-slide-toggle>
 
   <button *ngIf="btConnected" mat-raised-button color="primary" (click)="tune()">
     Tune
   </button>
 
-  <button mat-raised-button color="primary" (click)="setGpsHeading()">GPS Heading</button>
-  <button mat-raised-button color="primary" (click)="clearGraphs()">Clear Charts</button>
-
+  <button mat-raised-button color="primary" (click)="setGpsHeading()">Set GPS Heading</button>
 
 </div>
 

@@ -4,31 +4,19 @@ import { ControllerOrientationLogData, DataLogService } from './data-log.service
 import { HeadingStats } from './heading-stats';
 import { ChainedFilter, Filter, LowPassFilter, NotAFilter } from './filter';
 import { PidController } from './pid-controller';
-import { PidTuneService, Sensor, TuneConfig } from './pid-tune.service';
-import { SensorOrientationService } from './sensor-orientation.service';
+import { PidTuner, Sensor, TuneConfig } from './pid-tuner';
+import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
 import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
 import { DeviceSelectService } from './device-select.service';
+import { Subject, firstValueFrom } from 'rxjs';
+import { SensorGpsService } from './sensor-gps.service';
+import { ConfigService } from './config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ControllerOrientationService {
 
-  get kP(): number { return this.pidController.kP; }
-  set kP(val: number) {
-    this.pidController.kP = val;
-    this.updateLocalStorage();
-  }
-  get kI(): number { return this.pidController.kI; }
-  set kI(val: number) {
-    this.pidController.kI = val;
-    this.updateLocalStorage();
-  }
-  get kD(): number { return this.pidController.kD; }
-  set kD(val: number) {
-    this.pidController.kD = val;
-    this.updateLocalStorage();
-  }
   get enabled(): boolean { return this._enabled && this.rotationRateController.enabled; }
   set enabled(val: boolean) {
     this._enabled = val;
@@ -42,44 +30,36 @@ export class ControllerOrientationService {
   private errorFilter = this.getFilter();
   private headingHistory: number[] = [];
   private _enabled = false;
-  private lastErrorFiltered: number;
-  private tuner: PidTuneService;
+  private tuner: PidTuner;
   private sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
+  private sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
+  private pidTuneComplete = new Subject<void>();
 
 
 
-
-
-  // private sensorOrientation: MockBoatSensorAndTillerController,
-  // private motorService: MockBoatSensorAndTillerController,
   constructor(
     deviceSelectService: DeviceSelectService,
     private rotationRateController: ControllerRotationRateService,
+    private configService: ConfigService,
     private dataLog: DataLogService,
   ) {
-    this.sensorOrientation = deviceSelectService.orientationSensor
+    this.sensorOrientation = deviceSelectService.orientationSensor;
+    this.sensorLocation = deviceSelectService.locationSensor;
 
-    let pidStringP = localStorage.getItem(LocalStorageKeys.pidP);
-    let pidStringI = localStorage.getItem(LocalStorageKeys.pidI);
-    let pidStringD = localStorage.getItem(LocalStorageKeys.pidD);
+    this.configurePidController();
 
-    let kP = 0;
-    let kI = 0;
-    let kD = 0;
-
-    if (pidStringP != null)
-      kP = +pidStringP;
-    if (pidStringI != null)
-      kI = +pidStringI;
-    if (pidStringD != null)
-      kD = +pidStringD;
-
-    this.pidController = new PidController(kP, kI, kD);
-
-
-    this.sensorOrientation.update.subscribe(() => this.updateReceived())
+    this.sensorOrientation.heading.subscribe(heading => this.updateReceived(heading))
   }
 
+
+  private configurePidController(): void {
+    this.pidController = new PidController(
+      this.configService.config.orientationKp,
+      this.configService.config.orientationKi,
+      this.configService.config.orientationKd,
+      new ChainedFilter(this.configService.config.orientationPidDerivativeLowPassFrequency, 1),
+    );
+  }
 
   maintainCurrentHeading() {
     this.setDesiredHeadingToCurrent();
@@ -88,13 +68,11 @@ export class ControllerOrientationService {
 
   private setDesiredHeadingToCurrent(): void {
     this.desired = this.getAverageHeading();
-    // this.errorFilter = this.getFilter();
-    this.pidController.reset();
   }
 
 
-  private getError(): number {
-    let delta = this.sensorOrientation.current - this.desired;
+  private getError(currentHeading: number): number {
+    let delta = currentHeading - this.desired;
     if (delta > 180)
       delta = delta - 360;
     if (delta < -180)
@@ -104,16 +82,20 @@ export class ControllerOrientationService {
   }
 
 
-  private updateReceived(): void {
-    this.updateAverageHeading(this.sensorOrientation.current);
-    const errorRaw = this.getError();
-    const errorFiltered = this.errorFilter.process(errorRaw)
-    // const errorFiltered = errorRaw;
-    this.lastErrorFiltered = errorFiltered;
+  private updateReceived(heading: HeadingAndTime): void {
+    this.updateAverageHeading(heading.heading);
+    let errorRaw = this.getError(heading.heading);
+    let speedMultiplier = 1;
+    if (!this.tuner && this.configService.config.orientationTuneSpeed)
+      speedMultiplier = this.configService.config.orientationTuneSpeed / this.sensorLocation.getSpeedKt();
 
-    let command = this.pidController.update(errorFiltered);
+    const errorFiltered = this.errorFilter.process(errorRaw, heading.time)
 
-    const maxRate = 5;
+    this.processPidAutoTuneUpdate(errorRaw, heading.time);
+
+    let command = this.pidController.update(errorFiltered * speedMultiplier, heading.time);
+
+    const maxRate = this.rotationRateController.maxRotationRate;
     this.pidController.saturationReached = Math.abs(command) > maxRate;
     command = Math.max(command, -maxRate)
     command = Math.min(command, maxRate)
@@ -124,7 +106,7 @@ export class ControllerOrientationService {
 
     let logData = new ControllerOrientationLogData(
       this.desired,
-      this.sensorOrientation.current,
+      heading.heading,
       errorRaw,
       errorFiltered,
       command,
@@ -133,13 +115,6 @@ export class ControllerOrientationService {
     )
 
     this.dataLog.logControllerOrientation(logData);
-  }
-
-
-  private updateLocalStorage(): void {
-    localStorage.setItem(LocalStorageKeys.pidP, this.pidController.kP.toString());
-    localStorage.setItem(LocalStorageKeys.pidI, this.pidController.kI.toString());
-    localStorage.setItem(LocalStorageKeys.pidD, this.pidController.kD.toString());
   }
 
 
@@ -161,50 +136,49 @@ export class ControllerOrientationService {
 
 
   private getFilter(): Filter {
-    // return new ChainedFilter(1 / 1, 1);
-    return new NotAFilter();
+    return new ChainedFilter(this.configService.config.orientationLowPassFrequency, 1);
   }
 
   stopPidTune() {
-    this.tuner?.cancel();
+    this.rotationRateController.command(0);
+    this.tuner = undefined;
+    this.pidTuneComplete.next();
   }
 
 
-  async autoTune(): Promise<void> {
-    this.tuner = new PidTuneService();
-    let parent = this;
-    this.setDesiredHeadingToCurrent();
-    this._enabled = false;
+  private processPidAutoTuneUpdate(headingError: number, time: number): void {
+    let results = this.tuner?.sensorValueUpdated(headingError, time);
+    if (results) {
+      this.stopPidTune();
 
-    let sensor: Sensor = {
-      getValue: function (): number {
-        return parent.lastErrorFiltered
-      }
-    };
+      let tuningMethod = results.pid;
+      this.configService.config.orientationKp = tuningMethod.kP;
+      this.configService.config.orientationKi = tuningMethod.kI;
+      this.configService.config.orientationKd = tuningMethod.kD;
+      this.configService.config.orientationTuneSpeed = this.sensorLocation.getSpeedKt();
+      this.configService.save();
+
+      this.configurePidController();
+    }
+  }
 
 
+  async startPidTune(): Promise<void> {
     let tuneConfig = new TuneConfig();
     tuneConfig.setPoint = 0;
     tuneConfig.step = 1;
-    tuneConfig.intervalMs = 100;
-    tuneConfig.maxCycleCount = 15;
-    tuneConfig.noiseBand = 0.5;
+    tuneConfig.maxCycleCount = 20;
+    tuneConfig.noiseBand = this.configService.config.orientationTuneNoiseBand;
+    tuneConfig.allowedAmplitudeVariance = this.configService.config.orientationTuneAllowedVariance / 100;
+    tuneConfig.disableNoiseBandAfterCycle = this.configService.config.orientationTuneDisableNoiseBandCycles;
 
 
-    let results = await this.tuner.tune(this.rotationRateController, sensor, tuneConfig);
-    let tuningMethod = results.pid;
-    this.kP = tuningMethod.kP;
-    this.kI = tuningMethod.kI;
-    this.kD = tuningMethod.kD;
+    this.setDesiredHeadingToCurrent();
+    this._enabled = false;
+    this.tuner = new PidTuner(this.rotationRateController, tuneConfig);
+
+    return await firstValueFrom(this.pidTuneComplete);
   }
 
 
-}
-
-
-
-enum LocalStorageKeys {
-  pidP = "pidP-orientation",
-  pidI = "pidI-orientation",
-  pidD = "pidD-orientation",
 }

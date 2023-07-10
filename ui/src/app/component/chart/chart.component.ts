@@ -10,6 +10,11 @@ export class ChartComponent {
 
   @Input()
   set data(val: AppChartData[]) { this.configureData(val); }
+  @Input()
+  set title(val: string) {
+    this.lineChartOptions.plugins.title.text = val;
+    this.lineChartOptions.plugins.title.display = !!val;
+  }
 
   lineChartData: ChartConfiguration<'scatter'>['data'];
 
@@ -19,6 +24,10 @@ export class ChartComponent {
     hover: { mode: null },
     plugins: {
       tooltip: { enabled: false },
+      title: {
+        text: this.title,
+        display: true
+      }
     }
   };
 

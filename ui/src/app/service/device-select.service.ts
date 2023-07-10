@@ -4,6 +4,7 @@ import { BtMotorControllerService } from './bt-motor-controller.service';
 import { Controller } from './controller';
 import { SensorOrientationService } from './sensor-orientation.service';
 import { SensorGpsService } from './sensor-gps.service';
+import { ConfigService } from './config.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,9 +20,10 @@ export class DeviceSelectService {
     public RealOrientationService: SensorOrientationService,
     public realBtMotorController: BtMotorControllerService,
     public realGpsSensor: SensorGpsService,
+    configService: ConfigService,
   ) {
 
-    if (!true) {
+    if (configService.config.simulation) {
       this.motorController = mockBoat;
       this.orientationSensor = mockBoat;
       this.locationSensor = mockBoat;

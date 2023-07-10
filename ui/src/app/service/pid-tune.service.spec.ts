@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { PidTuneService, Point } from './pid-tune.service';
+import { PidTuner, Point } from './pid-tuner';
 
 describe('PidTuneService', () => {
-  let service: PidTuneService;
+  let service: PidTuner;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = new PidTuneService();
+    service = new PidTuner(null, null);
   });
 
 

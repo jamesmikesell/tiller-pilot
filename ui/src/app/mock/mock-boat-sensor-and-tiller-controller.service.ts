@@ -1,6 +1,8 @@
 import { Injectable } from "@angular/core";
 import { BehaviorSubject, Subject, timer } from "rxjs";
 import { Controller } from "../service/controller";
+import { HeadingAndTime } from "../service/sensor-orientation.service";
+import { ConfigService } from "../service/config.service";
 
 
 
@@ -11,17 +13,13 @@ export class MockBoatSensorAndTillerController implements Controller {
 
 
   tillerAngle = 0;
-  update = new Subject<void>();
+  heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, 0));
   connected = new BehaviorSubject<boolean>(true);
   enabled = false;
   get headingCurrentWithoutError(): number { return this.moveQueue[0].real }
-  get current(): number { return this.moveQueue[0].withNoise; }
   get currentMotorPower(): number { return this.tillerGainDegreesPerSecond / this.tillerPowerCoefficient };
-  speedKt = 3;
 
   private moveQueue: SensorWithNoise[] = [new SensorWithNoise(0, 0, 0), new SensorWithNoise(0, 0, 1)];
-  // private noiseAmplitude = .01;
-  private noiseAmplitude = 0;
   private tillerGainDegreesPerSecond = 0;
   private nextTillerDegreesPerSecond = 0;
   private tillerPowerCoefficient = 0.2;
@@ -29,6 +27,7 @@ export class MockBoatSensorAndTillerController implements Controller {
 
 
   constructor(
+    private configService: ConfigService,
   ) {
     setTimeout(() => {
       this.connected.next(true);
@@ -52,25 +51,28 @@ export class MockBoatSensorAndTillerController implements Controller {
         this.tillerAngle += this.tillerGainDegreesPerSecond * (dt / 1000);
 
         let current = this.moveQueue[this.moveQueue.length - 1].real;
-        current -= this.tillerAngle * (dt / 1000) * this.speedKt;
+        current -= this.tillerAngle * (dt / 1000) * this.configService.config.simulationSpeedKt;
         current = current % 360;
         if (current < 0)
           current = 360 + current;
 
-        const headingWithNoise = current + (Math.random() - 0.5) * this.noiseAmplitude;
+        const headingWithNoise = current + (Math.random() - 0.5) * this.configService.config.simulationNoiseAmplitude;
         this.moveQueue.push(new SensorWithNoise(current, headingWithNoise, now));
         if (this.moveQueue.length > 5) {
           this.moveQueue.shift();
         }
 
         this.previousTime = now;
-        this.update.next();
+        this.heading.next(new HeadingAndTime(now, headingWithNoise));
       })
 
 
   }
 
 
+  getSpeedKt(): number {
+    return this.configService.config.simulationSpeedKt;
+  }
 
 
   private getGetRotationAmount(currentAngle: number, previousAngle: number): number {

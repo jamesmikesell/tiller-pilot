@@ -10,7 +10,6 @@ import { DownloadService } from '../download.service';
 export class DataLogService {
 
   updated = new Subject<void>();
-  autoSaveEnabled = false;
   get logData(): LogData[] { return this._logData; }
 
 
@@ -27,45 +26,16 @@ export class DataLogService {
       .subscribe(() => {
         this.update();
       })
-
-    this.saveLogRecursive();
   }
 
 
-
-  private saveLogRecursive(): void {
-    setTimeout(async () => {
-      this.trySaveLogData();
-      this.saveLogRecursive();
-    }, 5000);
-  }
-
-
-  async clearSavedData(): Promise<void> {
-    await localforage.setItem("log", []);
-  }
-
-  clearUnsavedData(): void {
+  clearLogData(): void {
     this._logData = [];
   }
 
-  async trySaveLogData(): Promise<void> {
-    if (this.autoSaveEnabled)
-      this.forceSaveLogData();
-  }
-
-  async forceSaveLogData(): Promise<void> {
-    let existing: LogData[] = await localforage.getItem("asdf") || [];
-    existing.push(...this._logData);
-    await localforage.setItem("log", existing);
-  }
-
   async downloadLog(): Promise<void> {
-    await this.forceSaveLogData();
-    let log = await localforage.getItem("log")
-    this.downloadService.download(JSON.stringify(log), `log-${(Date.now())}.txt`);
+    this.downloadService.download(JSON.stringify(this._logData), `log-${(Date.now())}.txt`);
   }
-
 
 
   logLocation(data: LocationLogData) {

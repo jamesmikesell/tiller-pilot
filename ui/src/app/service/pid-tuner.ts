@@ -1,9 +1,8 @@
 import { Subject, Subscription, combineAll, firstValueFrom, takeUntil, timer } from 'rxjs';
 import { Controller } from './controller';
 
-export class PidTuneService {
+export class PidTuner {
 
-  private loopSubscription: Subscription;
   private historyProcess: Point[] = []
   private mostRecent2CyclePeaks: Point[] = []
   private lastCommand = 0;
@@ -11,80 +10,70 @@ export class PidTuneService {
   private isSteppingUp = false;
 
 
-  constructor() { }
-
-  
-  async tune(controller: Controller, sensor: Sensor, config: TuneConfig): Promise<PidTuningSuggestedValues> {
-    let end = new Subject<PidTuningSuggestedValues>();
-
-    this.loopSubscription = timer(0, config.intervalMs)
-      .pipe(takeUntil(end))
-      .subscribe(async () => {
-        let now = performance.now();
-        let sensorValue = sensor.getValue();
+  constructor(
+    private controller: Controller,
+    private config: TuneConfig
+  ) { }
 
 
-        if (this.isSteppingUp && sensorValue > config.setPoint + config.noiseBand)
-          this.isSteppingUp = false;
-        else if (!this.isSteppingUp && sensorValue < config.setPoint - config.noiseBand)
-          this.isSteppingUp = true;
+  sensorValueUpdated(value: number, time: number): PidTuningSuggestedValues {
+    let noiseBand = this.config.noiseBand;
+    if (this.cyclesCompleted >= this.config.disableNoiseBandAfterCycle)
+      noiseBand = 0;
 
-        let command = config.step;
-        if (!this.isSteppingUp)
-          command = -config.step
+    if (this.isSteppingUp && value > this.config.setPoint + noiseBand)
+      this.isSteppingUp = false;
+    else if (!this.isSteppingUp && value < this.config.setPoint - noiseBand)
+      this.isSteppingUp = true;
+
+    let command = this.config.step;
+    if (!this.isSteppingUp)
+      command = -this.config.step
 
 
-        if (command !== this.lastCommand) {
-          this.cyclesCompleted++
-          let extrema = this.findLocalExtrema(this.historyProcess);
-          console.log(extrema);
-          if (extrema.length > 0)
-            this.mostRecent2CyclePeaks.push(extrema[0]);
-          this.historyProcess.length = 0;
+    if (command !== this.lastCommand) {
+      this.cyclesCompleted++
+      let extrema = this.findLocalExtrema(this.historyProcess);
+      console.log(extrema);
+      if (extrema.length > 0)
+        this.mostRecent2CyclePeaks.push(extrema[0]);
+      this.historyProcess.length = 0;
 
-          if (this.mostRecent2CyclePeaks.length >= 4) {
-            let mostRecentPeak1Delta = Math.abs(this.mostRecent2CyclePeaks[0].value - this.mostRecent2CyclePeaks[2].value);
-            let mostRecentPeak2Delta = Math.abs(this.mostRecent2CyclePeaks[1].value - this.mostRecent2CyclePeaks[3].value);
+      if (this.mostRecent2CyclePeaks.length >= 4) {
+        let mostRecentPeak1Delta = Math.abs(this.mostRecent2CyclePeaks[0].value - this.mostRecent2CyclePeaks[2].value);
+        let mostRecentPeak2Delta = Math.abs(this.mostRecent2CyclePeaks[1].value - this.mostRecent2CyclePeaks[3].value);
 
-            let max = Math.max(...this.mostRecent2CyclePeaks.map(single => single.value));
-            let min = Math.min(...this.mostRecent2CyclePeaks.map(single => single.value));
+        let max = Math.max(...this.mostRecent2CyclePeaks.map(single => single.value));
+        let min = Math.min(...this.mostRecent2CyclePeaks.map(single => single.value));
 
-            let amplitude = max - min;
-            let peak1Variance = mostRecentPeak1Delta / amplitude;
-            let peak2Variance = mostRecentPeak2Delta / amplitude;
-            if (peak1Variance <= config.allowedAmplitudeVariance && peak2Variance <= config.allowedAmplitudeVariance) {
-              this.loopSubscription.unsubscribe();
-              controller.stop();
+        let amplitude = max - min;
+        let peak1Variance = mostRecentPeak1Delta / amplitude;
+        let peak2Variance = mostRecentPeak2Delta / amplitude;
+        if (peak1Variance <= this.config.allowedAmplitudeVariance && peak2Variance <= this.config.allowedAmplitudeVariance) {
+          this.controller.stop();
 
-              let extremaProcess = this.findLocalExtrema(this.mostRecent2CyclePeaks);
-              let suggestedPidValues = this.calculatePidConfigs(extremaProcess, config.step * 2);
+          let extremaProcess = this.findLocalExtrema(this.mostRecent2CyclePeaks);
+          let suggestedPidValues = this.calculatePidConfigs(extremaProcess, this.config.step * 2);
 
-              end.next(suggestedPidValues);
-            }
-
-            this.mostRecent2CyclePeaks.splice(0, this.mostRecent2CyclePeaks.length - 3)
-          }
-        }
-        this.lastCommand = command;
-
-        this.historyProcess.push(new Point(new Date(performance.timeOrigin + now), sensorValue));
-
-        if (this.cyclesCompleted > config.maxCycleCount) {
-          this.loopSubscription.unsubscribe();
-          controller.stop();
-          end.next(undefined);
-          console.log("PID Tuning timed out without finding consistent results");
+          return suggestedPidValues;
         }
 
-        controller.command(command);
-      });
+        this.mostRecent2CyclePeaks.splice(0, this.mostRecent2CyclePeaks.length - 3)
+      }
+    }
+    this.lastCommand = command;
 
-    return await firstValueFrom(end);
-  }
+    this.historyProcess.push(new Point(new Date(performance.timeOrigin + time), value));
 
-  cancel(): void {
-    if (this.loopSubscription && !this.loopSubscription.closed)
-      this.loopSubscription.unsubscribe();
+    if (this.cyclesCompleted > this.config.maxCycleCount) {
+      this.controller.stop();
+
+      console.log("PID Tuning timed out without finding consistent results");
+      return new PidTuningSuggestedValues();
+    }
+
+    this.controller.command(command);
+    return null;
   }
 
 
@@ -153,7 +142,7 @@ export class PidTuneService {
   }
 
 
-  private calculatePidConfigs(processExtrema: Point[], controlAmplitude: number, lookBackSamples = 5): PidTuningSuggestedValues {
+  private calculatePidConfigs(processExtrema: Point[], controlAmplitude: number, lookBackSamples = 4): PidTuningSuggestedValues {
     let tuningResults = this.calculateKuAndTu(processExtrema, controlAmplitude, lookBackSamples);
 
     let config = new PidTuningSuggestedValues();
@@ -233,8 +222,8 @@ export class PidTuningSuggestedValues {
 export class TuneConfig {
   setPoint = 0;
   step = 1;
-  intervalMs = 100;
   maxCycleCount = 5;
   noiseBand = 0;
   allowedAmplitudeVariance = 0.10;
+  disableNoiseBandAfterCycle = 2;
 }

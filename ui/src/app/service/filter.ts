@@ -8,21 +8,20 @@ export class LowPassFilter implements Filter {
     this.cutoffFrequency = cutoffFrequency;
   }
 
-  process(input: number): number {
-    const now = performance.now();
+  process(input: number, time: number): number {
     if (this.prevOutput == null) {
       this.prevOutput = input;
-      this.previousTime = now;
+      this.previousTime = time;
       return input;
     }
 
     const RC = 1 / (2 * Math.PI * this.cutoffFrequency);
-    const dt = (now - this.previousTime) / 1000;
+    const dt = (time - this.previousTime) / 1000;
     const alpha = dt / (RC + dt);
 
     const output = alpha * input + (1 - alpha) * this.prevOutput;
     this.prevOutput = output;
-    this.previousTime = now;
+    this.previousTime = time;
 
     return output;
   }
@@ -40,14 +39,14 @@ export class ChainedFilter implements Filter {
     }
   }
 
-  process(input: number): number {
+  process(input: number, time: number): number {
     let filteredResult: number;
     for (let i = 0; i < this.filters.length; i++) {
       const filter = this.filters[i];
       if (i === 0)
-        filteredResult = filter.process(input);
+        filteredResult = filter.process(input, time);
       else
-        filteredResult = filter.process(filteredResult);
+        filteredResult = filter.process(filteredResult, time);
     }
 
     return filteredResult;
@@ -56,12 +55,12 @@ export class ChainedFilter implements Filter {
 
 
 export class NotAFilter implements Filter {
-  process(input: number): number {
+  process(input: number, time: number): number {
     return input;
   }
 }
 
 
 export interface Filter {
-  process(input: number): number;
+  process(input: number, time: number): number;
 }

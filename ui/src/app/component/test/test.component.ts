@@ -1,18 +1,18 @@
 import { Component, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { timer } from 'rxjs';
+import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
 import { BtMotorControllerService } from 'src/app/service/bt-motor-controller.service';
+import { ConfigService } from 'src/app/service/config.service';
 import { ControllerOrientationService } from 'src/app/service/controller-orientation.service';
 import { ControllerRotationRateService } from 'src/app/service/controller-rotation-rate.service';
 import { DataLogService } from 'src/app/service/data-log.service';
+import { DeviceSelectService } from 'src/app/service/device-select.service';
 import { SensorGpsService } from 'src/app/service/sensor-gps.service';
 import { SensorNavigationService } from 'src/app/service/sensor-navigation.service';
 import { SensorOrientationService } from 'src/app/service/sensor-orientation.service';
 import { WakeLockService } from 'src/app/service/wake-lock.service';
 import { AppChartData } from '../chart/chart.component';
-import { Controller } from 'src/app/service/controller';
-import { DeviceSelectService } from 'src/app/service/device-select.service';
-import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
-import { timer } from 'rxjs';
 
 @Component({
   selector: 'app-test',
@@ -25,10 +25,8 @@ export class TestComponent implements OnInit {
   chartNavigation: AppChartData[] = [];
   chartGpsHeading: AppChartData[] = [];
   btConnected = false;
-  clearDataString = "";
-  loggingEnabled = false;
-  showGraphs = true;
   sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
+  sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
 
   private motorControllerService: MockBoatSensorAndTillerController | BtMotorControllerService;
 
@@ -42,18 +40,13 @@ export class TestComponent implements OnInit {
     private navigationService: SensorNavigationService,
     private dataLog: DataLogService,
     private snackBar: MatSnackBar,
+    public configService: ConfigService,
   ) {
     this.motorControllerService = deviceSelectService.motorController;
     this.sensorOrientation = deviceSelectService.orientationSensor;
+    this.sensorLocation = deviceSelectService.locationSensor;
   }
 
-
-  async clearData(): Promise<void> {
-    if (this.canClear()) {
-      await this.dataLog.clearSavedData();
-      this.clearDataString = "";
-    }
-  }
 
 
   ngOnInit(): void {
@@ -62,20 +55,13 @@ export class TestComponent implements OnInit {
     this.motorControllerService.connected.subscribe(isConnected => this.btConnected = isConnected);
 
 
-    timer(0, 1 * 1000)
+    timer(0, 1 * 250)
       .subscribe(() => this.updateCharts());
   }
 
 
-  copyResults(): void {
-    let rot = this.controllerRotationRate;
-    let or = this.controllerOrientation;
-    let text = `${rot.kP}\t${rot.kI}\t${rot.kD}\t${or.kP}\t${or.kI}\t${or.kD}`
-    navigator.clipboard.writeText(text);
-  }
-
-  clearGraphs(): void {
-    this.dataLog.clearUnsavedData();
+  private clearGraphs(): void {
+    this.dataLog.clearLogData();
     this.updateCharts();
   }
 
@@ -113,17 +99,18 @@ export class TestComponent implements OnInit {
 
   private updateCharts() {
     const start = this.dataLog.logData[0].time.getTime();
-    let headingErrorFiltered = new AppChartData("Heading Er Fltr", []);
-    let headingErrorRaw = new AppChartData("Heading Er Raw", []);
-    let headingCommand = new AppChartData("Heading Cmd", []);
+    let headingErrorFiltered = new AppChartData("Deviation filtered °", []);
+    let headingErrorRaw = new AppChartData("Deviation °", []);
+    let headingCommand = new AppChartData("Command (°/s)", []);
     let chartOrientation: AppChartData[] = [headingErrorRaw, headingErrorFiltered, headingCommand];
 
-    let rotationRateRaw = new AppChartData("Rot. Rt. Cur", []);
-    let rotationRateFiltered = new AppChartData("Rot. Rt. Desired", []);
-    let rotationRateCommand = new AppChartData("Rot. Rt. Cmd", []);
-    let rotationRateErrorFilter = new AppChartData("Rot. Rt. Sim. w/o Noise", []);
-    let chartDataRotationRate: AppChartData[] = [rotationRateRaw, rotationRateFiltered, rotationRateCommand, rotationRateErrorFilter];
-
+    let rotationRateRaw = new AppChartData("Actual (°/s)", []);
+    let rotationRateFiltered = new AppChartData("Set Point (°/s)", []);
+    let rotationRateCommand = new AppChartData("Command (motor power level)", []);
+    let rotationRateErrorFilter = new AppChartData("Simulation Rate w/o Noise (°/s)", []);
+    let chartDataRotationRate: AppChartData[] = [rotationRateRaw, rotationRateFiltered, rotationRateCommand];
+    if (this.configService.config.simulation)
+      chartDataRotationRate.push(rotationRateErrorFilter);
 
     let distanceFromLine = new AppChartData("Dst Fr Ln", []);
     let chartNavigation: AppChartData[] = [distanceFromLine];
@@ -163,20 +150,18 @@ export class TestComponent implements OnInit {
 
 
   private async tuneRotationRateController(): Promise<void> {
-    await this.dataLog.trySaveLogData();
-    this.dataLog.clearUnsavedData();
+    this.dataLog.clearLogData();
 
     this.disableAllControllers();
-    await this.controllerRotationRate.autoTune();
+    await this.controllerRotationRate.startPidTune();
     this.snackBar.open("1/2 - Rot. Rt. PID Tune Complete", "Dismiss")
   }
 
   private async tuneOrientationController(): Promise<void> {
-    await this.dataLog.trySaveLogData();
-    this.dataLog.clearUnsavedData();
+    this.dataLog.clearLogData();
 
     this.disableAllControllers();
-    await this.controllerOrientation.autoTune();
+    await this.controllerOrientation.startPidTune();
     this.snackBar.open("2/2 - Orientation PID Tune Complete", "Dismiss")
   }
 
@@ -188,15 +173,10 @@ export class TestComponent implements OnInit {
 
 
   async maintainCurrentHeading(): Promise<void> {
-    await this.dataLog.trySaveLogData();
-
     this.controllerOrientation.maintainCurrentHeading();
-    this.dataLog.clearUnsavedData();
+    this.dataLog.clearLogData();
   }
 
-  downloadLog(): void {
-    this.dataLog.downloadLog();
-  }
 
   async initBluetooth(): Promise<void> {
     this.wakeLockService.wakeLock();
@@ -229,9 +209,6 @@ export class TestComponent implements OnInit {
     navigator.vibrate([50]);
   }
 
-  canClear(): boolean {
-    return this.clearDataString.toLocaleLowerCase() === "clear";
-  }
 
   private eStop(): void {
     this.controllerOrientation.stopPidTune();

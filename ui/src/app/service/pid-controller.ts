@@ -1,21 +1,9 @@
 import { ChainedFilter, Filter, LowPassFilter, NotAFilter } from "./filter";
 
 export class PidController {
-  get kP(): number { return this._kP; }
-  set kP(val: number) {
-    this._kP = val;
-    this.reset()
-  }
-  get kI(): number { return this._kI; }
-  set kI(val: number) {
-    this._kI = val;
-    this.reset()
-  }
-  get kD(): number { return this._kD; }
-  set kD(val: number) {
-    this._kD = val;
-    this.reset()
-  }
+  kP: number;
+  kI: number;
+  kD: number;
 
   saturationReached = false;
 
@@ -39,12 +27,10 @@ export class PidController {
 
   setTarget(target: number): void {
     this.target = target;
-    this.reset();
   }
 
-  update(currentValue: number): number {
-    const now = performance.now();
-    let dt = (now - this.lastUpdate) / 1000;
+  update(currentValue: number, time: number): number {
+    let dt = (time - this.lastUpdate) / 1000;
     const error = this.target - currentValue;
 
     // Proportional term
@@ -53,27 +39,22 @@ export class PidController {
     // Integral term
     let errorAndPreviousOutputSameSign = error * this.previousOutput > 0;
     // clamp integration if saturation is reached and the sign of the last output is the same as the current error to prevent windup
-    if (!this.saturationReached || !errorAndPreviousOutputSameSign)
+    if (!this.saturationReached || !errorAndPreviousOutputSameSign) 
       this.integral += error * dt;
     const integral = this.kI * this.integral;
 
     // Derivative term
-    const derivative = this.kD * this.derivativeFilter.process(error - this.previousError) / dt;
+    const derivative = this.kD * this.derivativeFilter.process(error - this.previousError, time) / dt;
 
     const output = proportional + integral + derivative;
     this.previousOutput = output;
     // Update previous error for the next iteration
     this.previousError = error;
 
-    this.lastUpdate = now;
+    this.lastUpdate = time;
 
     return output;
   }
 
-  reset(): void {
-    // this.integral = 0;
-    // this.previousError = 0;
-    // this.lastUpdate = performance.now();
-  }
 }
 
