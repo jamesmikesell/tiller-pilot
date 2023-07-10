@@ -1,27 +1,42 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Subscription } from 'rxjs';
-import { FskModulationService } from './fsk-modulation.service';
+import { BehaviorSubject, timer } from 'rxjs';
+import { Controller } from './controller';
 
 @Injectable({
   providedIn: 'root'
 })
-export class BtMotorControllerService {
+export class BtMotorControllerService implements Controller {
 
   connected = new BehaviorSubject<boolean>(false);
 
   private characteristic: BluetoothRemoteGATTCharacteristic;
-  private fskUpdateSubscription: Subscription;
-  private fskDirection: Direction;
+  private nextPowerLevel = 0;
+  private gatt: BluetoothRemoteGATTServer;
 
   constructor(
-    private fskService: FskModulationService,
   ) {
+    timer(0, 200)
+      .subscribe(() => {
+        if (!this.connected.value)
+          return;
+
+        if (this.nextPowerLevel === 0)
+          this.stop();
+        else if (this.nextPowerLevel > 0)
+          this.move(Direction.RIGHT, this.nextPowerLevel)
+        else
+          this.move(Direction.LEFT, Math.abs(this.nextPowerLevel))
+      });
+
   }
 
 
-  private fskUnsubscribe(): void {
-    if (this.fskUpdateSubscription && !this.fskUpdateSubscription.closed) {
-      this.fskUpdateSubscription.unsubscribe();
+  disconnect(): void {
+    if (this.gatt){
+      this.characteristic = undefined;
+      this.connected.next(false);
+      this.gatt.disconnect();
+      this.gatt = undefined;  
     }
   }
 
@@ -41,6 +56,7 @@ export class BtMotorControllerService {
 
     try {
       let device = await navigator.bluetooth.requestDevice(config);
+      this.gatt = device.gatt;
       device.addEventListener("gattserverdisconnected", event => this.bluetoothDisconnected());
       console.log('Connecting to GATT Server...');
       let server = await device.gatt.connect();
@@ -55,37 +71,20 @@ export class BtMotorControllerService {
   }
 
 
-  stop() {
+  stop(): void {
     this.characteristic.writeValue(new Uint8Array([0, Direction.LEFT]));
   }
 
-  move(direction: Direction): void {
-    this.characteristic.writeValue(new Uint8Array([255, direction]));
+  private async move(direction: Direction, powerPercent: number): Promise<void> {
+    let level = Math.round(powerPercent * 255);
+    this.characteristic.writeValue(new Uint8Array([level, direction]));
   }
 
-  moveFsk(direction: Direction, power: number): void {
-    this.fskDirection = direction;
-    
-    if (power >= 1) {
-      this.fskUnsubscribe();
-      this.move(direction);
-    } else if (power <= 0) {
-      this.fskUnsubscribe();
-      this.stop();
-    } else {
-      if (!this.fskUpdateSubscription || this.fskUpdateSubscription.closed) {
-        this.fskUpdateSubscription = this.fskService.pulseState.subscribe(isOn => {
-          if (isOn) {
-            this.move(this.fskDirection);
-          } else {
-            this.stop();
-          }
-        });
-      }
 
-      this.fskService.setPowerPercent(power);
-    }
+  command(level: number): void {
+    this.nextPowerLevel = level;
   }
+
 
   private bluetoothDisconnected(): any {
     this.characteristic = undefined;
@@ -95,7 +94,7 @@ export class BtMotorControllerService {
 }
 
 
-export enum Direction {
+enum Direction {
   RIGHT = 1,
   LEFT = 0,
 }

@@ -1,14 +1,18 @@
-import { Component, OnInit } from '@angular/core';
-import * as localforage from 'localforage';
-import { DownloadService } from 'src/app/download.service';
-import { BtMotorControllerService, Direction } from 'src/app/service/bt-motor-controller.service';
-import { HeadingCompassService } from 'src/app/service/heading-compass.service';
-import { HeadingGpsService } from 'src/app/service/heading-gps.service';
-import { PidControllerService } from 'src/app/service/pid-controller.service';
+import { Component, HostListener, OnInit } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { timer } from 'rxjs';
+import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
+import { BtMotorControllerService } from 'src/app/service/bt-motor-controller.service';
+import { ConfigService } from 'src/app/service/config.service';
+import { ControllerOrientationService } from 'src/app/service/controller-orientation.service';
+import { ControllerRotationRateService } from 'src/app/service/controller-rotation-rate.service';
+import { DataLogService } from 'src/app/service/data-log.service';
+import { DeviceSelectService } from 'src/app/service/device-select.service';
+import { SensorGpsService } from 'src/app/service/sensor-gps.service';
+import { SensorNavigationService } from 'src/app/service/sensor-navigation.service';
+import { SensorOrientationService } from 'src/app/service/sensor-orientation.service';
 import { WakeLockService } from 'src/app/service/wake-lock.service';
-import { HeadingStats } from '../../service/heading-stats';
 import { AppChartData } from '../chart/chart.component';
-import { LowPassFilter } from './low-pass-filter';
 
 @Component({
   selector: 'app-test',
@@ -16,231 +20,237 @@ import { LowPassFilter } from './low-pass-filter';
   styleUrls: ['./test.component.css']
 })
 export class TestComponent implements OnInit {
-  pidSpeed: number;
-  Direction = Direction;
-  logMessages = "";
-  autoPilotOn = false;
-  motorDirection: Direction
-  chartData1: AppChartData[] = [];
-  chartData2: AppChartData[] = [];
-  chartData3: AppChartData[] = [];
+  chartOrientation: AppChartData[] = [];
+  chartDataRotationRate: AppChartData[] = [];
+  chartNavigation: AppChartData[] = [];
+  chartGpsHeading: AppChartData[] = [];
   btConnected = false;
-  clearDataString = "";
-  activeHeadingService: HeadingCompassService | HeadingGpsService;
-  loggingEnabled = false;
+  sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
+  sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
 
-  private logData: LogData[] = [];
-  private headingHistory: number[] = [];
-  private filterError = this.getFilter();
+  private motorControllerService: MockBoatSensorAndTillerController | BtMotorControllerService;
+
 
   constructor(
     private wakeLockService: WakeLockService,
-    public pidController: PidControllerService,
-    public headingGpsService: HeadingGpsService,
-    public headingCompassService: HeadingCompassService,
-    private motorService: BtMotorControllerService,
-    private downloadService: DownloadService,
+    public controllerRotationRate: ControllerRotationRateService,
+    public controllerOrientation: ControllerOrientationService,
+    public sensorGpsService: SensorGpsService,
+    deviceSelectService: DeviceSelectService,
+    private navigationService: SensorNavigationService,
+    private dataLog: DataLogService,
+    private snackBar: MatSnackBar,
+    public configService: ConfigService,
   ) {
-    this.saveLogRecursive();
-    this.activeHeadingService = headingCompassService;
+    this.motorControllerService = deviceSelectService.motorController;
+    this.sensorOrientation = deviceSelectService.orientationSensor;
+    this.sensorLocation = deviceSelectService.locationSensor;
   }
 
-  private saveLogRecursive(): void {
-    setTimeout(async () => {
-      this.trySaveLogData();
-      this.saveLogRecursive();
-    }, 5000);
-  }
-
-  private async trySaveLogData(): Promise<void> {
-    if (this.loggingEnabled) {
-      let existing: LogData[] = await localforage.getItem("asdf") || [];
-      existing.push(...this.logData);
-      await localforage.setItem("log", existing);
-    }
-  }
-
-  async downloadLog(): Promise<void> {
-    let log = await localforage.getItem("log")
-    this.downloadService.download(JSON.stringify(log), `log-${(Date.now())}.txt`);
-  }
-
-  async clearData(): Promise<void> {
-    if (this.canClear()) {
-      await localforage.setItem("log", []);
-      this.clearDataString = "";
-    }
-  }
 
 
   ngOnInit(): void {
-    this.headingCompassService.update.subscribe(() => this.updateReceived())
-    this.headingGpsService.update.subscribe(() => this.updateReceived());
+    this.sensorGpsService.update.subscribe(() => this.updateReceived());
 
-    this.motorService.connected.subscribe(isConnected => this.btConnected = isConnected);
+    this.motorControllerService.connected.subscribe(isConnected => this.btConnected = isConnected);
+
+
+    timer(0, 1 * 250)
+      .subscribe(() => this.updateCharts());
   }
 
-  private updateReceived(): void {
-    this.updateAverageHeading(this.activeHeadingService.current);
-    const errorRaw = this.activeHeadingService.getError();
-    const errorFiltered = this.filterError.process(errorRaw)
 
-    let command = this.pidController.update(errorFiltered);
-    this.pidController.saturationReached = Math.abs(command) > 1;
-    command = Math.max(command, -1)
-    command = Math.min(command, 1)
+  @HostListener('window:beforeunload')
+  onWindowReload(): void {
+    this.motorControllerService.disconnect();
+  }
 
-    let direction = Direction.RIGHT;
-    if (command < 0)
-      direction = Direction.LEFT;
 
-    this.pidSpeed = Math.abs(command);
-    this.motorDirection = direction;
-
-    const useAutoPilot = this.motorService.connected.value && this.autoPilotOn;
-    if (useAutoPilot)
-      this.moveFsk(direction, this.pidSpeed);
-
-    this.logData.push(new LogData(
-      new Date(),
-      this.headingGpsService.latitude,
-      this.headingGpsService.longitude,
-      this.activeHeadingService.desired,
-      this.activeHeadingService.current,
-      errorRaw,
-      errorFiltered,
-      command,
-      useAutoPilot,
-      this.headingGpsService.getSpeedKt(),
-      this.getAverageHeading(),
-    ));
-
+  private clearGraphs(): void {
+    this.dataLog.clearLogData();
     this.updateCharts();
   }
 
-
-  private getFilter(): LowPassFilter {
-    return new LowPassFilter(1 / 4);
+  private gpsLat: number;
+  private gpsLon: number;
+  private gpsHeading: number;
+  setGpsHeading(): void {
+    this.gpsLat = this.sensorGpsService.latitude;
+    this.gpsLon = this.sensorGpsService.longitude;
+    this.gpsHeading = this.sensorGpsService.currentHeading;
+    this.clearGraphs();
   }
 
-  private updateAverageHeading(currentHeading: number) {
-    this.headingHistory.push(currentHeading);
-    if (this.headingHistory.length > 6)
-      this.headingHistory.shift()
+  private updateReceived(): void {
+    let distance = this.navigationService.calculateDistanceFromLine(
+      this.gpsLat,
+      this.gpsLon,
+      this.gpsHeading,
+      this.sensorGpsService.latitude,
+      this.sensorGpsService.longitude
+    )
+
+    let logData = new LocationLogData(
+      this.sensorGpsService.latitude,
+      this.sensorGpsService.longitude,
+      this.sensorGpsService.getSpeedKt(),
+      distance,
+      this.sensorGpsService.currentHeading
+    )
+
+    this.dataLog.logLocation(logData);
   }
 
-  getAverageHeading(): number {
-    let avg = HeadingStats.circularMean(this.headingHistory);
-
-    if (avg < 0)
-      return 360 + avg;
-
-    return avg;
-  }
 
 
   private updateCharts() {
-    const start = this.logData[0].time.getTime();
-    let errorFiltered = new AppChartData("error filtered", []);
-    let errorRaw = new AppChartData("error raw", []);
-    let dataChart1: AppChartData[] = [errorRaw, errorFiltered];
+    if (!this.dataLog.logData.length) {
+      console.log("no log data");
+      return;
+    }
 
-    let headingRaw = new AppChartData("heading raw", []);
-    let headingFiltered = new AppChartData("heading filtered", []);
-    let dataChart2: AppChartData[] = [headingRaw, headingFiltered];
+    const start = this.dataLog.logData[0].time.getTime();
+    let headingErrorFiltered = new AppChartData("Deviation filtered °", []);
+    let headingErrorRaw = new AppChartData("Deviation °", []);
+    let headingCommand = new AppChartData("Command (°/s)", []);
+    let chartOrientation: AppChartData[] = [headingErrorRaw, headingErrorFiltered, headingCommand];
 
-    let command = new AppChartData("command", []);
-    let dataChart3: AppChartData[] = [errorFiltered, command];
+    let rotationRateRaw = new AppChartData("Actual (°/s)", []);
+    let rotationRateFiltered = new AppChartData("Set Point (°/s)", []);
+    let rotationRateCommand = new AppChartData("Command (motor power level)", []);
+    let rotationRateErrorFilter = new AppChartData("Simulation Rate w/o Noise (°/s)", []);
+    let chartDataRotationRate: AppChartData[] = [rotationRateRaw, rotationRateFiltered, rotationRateCommand];
+    if (this.configService.config.simulation)
+      chartDataRotationRate.push(rotationRateErrorFilter);
 
-    this.logData.forEach(singleLog => {
-      const time = (singleLog.time.getTime() - start) / 1000;
+    let distanceFromLine = new AppChartData("Dst Fr Ln", []);
+    let chartNavigation: AppChartData[] = [distanceFromLine];
 
-      errorFiltered.data.push({ x: time, y: singleLog.errorFiltered })
-      errorRaw.data.push({ x: time, y: singleLog.errorRaw })
-      headingRaw.data.push({ x: time, y: singleLog.headingRaw })
-      headingFiltered.data.push({ x: time, y: singleLog.headingAvg })
-      command.data.push({ x: time, y: singleLog.command })
-    })
+    let gpsHeading = new AppChartData("GPS Heading", []);
+    let chartGpsHeading: AppChartData[] = [gpsHeading];
 
-    this.chartData1 = dataChart1;
-    this.chartData2 = dataChart2;
-    this.chartData3 = dataChart3;
+    const now = Date.now();
+    this.dataLog.logData
+      // .filter(single => now - single.time.getTime() < 10000)
+      .forEach(singleLog => {
+        const time = (singleLog.time.getTime() - start) / 1000;
+
+        headingErrorFiltered.data.push({ x: time, y: singleLog.headingErrorFiltered })
+        headingErrorRaw.data.push({ x: time, y: singleLog.headingErrorRaw })
+        headingCommand.data.push({ x: time, y: singleLog.headingCommand })
+        rotationRateRaw.data.push({ x: time, y: singleLog.rotationRateCurrent })
+        rotationRateFiltered.data.push({ x: time, y: singleLog.rotationRateDesired })
+        rotationRateCommand.data.push({ x: time, y: singleLog.rotationRateCommand })
+        rotationRateErrorFilter.data.push({ x: time, y: singleLog.rotationRateReal })
+        distanceFromLine.data.push({ x: time, y: singleLog.locationDistanceFromTarget })
+        gpsHeading.data.push({ x: time, y: singleLog.locationGpsHeading })
+      })
+
+    this.chartOrientation = chartOrientation;
+    this.chartDataRotationRate = chartDataRotationRate;
+    this.chartNavigation = chartNavigation;
+    this.chartGpsHeading = chartGpsHeading;
   }
 
-  private clearChartData(): void {
-    this.chartData1 = [];
+  async tune(): Promise<void> {
+    await this.tuneRotationRateController();
+    await this.tuneOrientationController();
+
+    this.controllerOrientation.maintainCurrentHeading();
+  }
+
+
+  private async tuneRotationRateController(): Promise<void> {
+    this.dataLog.clearLogData();
+
+    this.disableAllControllers();
+    await this.controllerRotationRate.startPidTune();
+    this.snackBar.open("1/2 - Rot. Rt. PID Tune Complete", "Dismiss")
+  }
+
+  private async tuneOrientationController(): Promise<void> {
+    this.dataLog.clearLogData();
+
+    this.disableAllControllers();
+    await this.controllerOrientation.startPidTune();
+    this.snackBar.open("2/2 - Orientation PID Tune Complete", "Dismiss")
+  }
+
+
+  private disableAllControllers(): void {
+    this.controllerOrientation.enabled = false;
+    this.controllerRotationRate.enabled = false;
   }
 
 
   async maintainCurrentHeading(): Promise<void> {
-    await this.trySaveLogData();
-    this.logData = [];
-
-    this.filterError = this.getFilter();
-    this.activeHeadingService.desired = this.getAverageHeading();
-    this.pidController.reset();
-    this.autoPilotOn = true;
-    this.clearChartData();
+    this.controllerOrientation.maintainCurrentHeading();
+    this.dataLog.clearLogData();
   }
+
 
   async initBluetooth(): Promise<void> {
     this.wakeLockService.wakeLock();
 
-    this.motorService.connect();
+    this.motorControllerService.connect();
   }
 
-  changeAutoPilot(isOn: boolean): void {
-    this.autoPilotOn = isOn;
-    if (!isOn) {
-      // calling move fsk so that it cancels any pending modulations
-      this.moveFsk(Direction.LEFT, 0);
-    }
-  }
 
-  private moveFsk(direction: Direction, speed: number): void {
-    this.motorService.moveFsk(direction, speed);
-  }
-
-  moveManually(direction: Direction): void {
+  moveManually(level: number): void {
     this.vibrate();
-    this.motorService.move(direction);
+    if (this.controllerOrientation.enabled)
+      this.controllerOrientation.desired = (this.controllerOrientation.desired - (level * 5)) % 360;
+    else
+      this.controllerRotationRate.command(this.controllerRotationRate.desired + level);
   }
 
   stopManually(): void {
-    if (this.autoPilotOn)
-      this.changeAutoPilot(false);
-    else
-      this.motorService.stop();
+    this.controllerRotationRate.stopPidTune();
+    this.controllerOrientation.stopPidTune();
+
+    if (this.controllerOrientation.enabled)
+      this.controllerOrientation.enabled = false;
+
+    this.controllerRotationRate.command(0)
 
     this.vibrate();
   }
 
   private vibrate(): void {
-    // let snd = new Audio("data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");
-    // snd.play();
     navigator.vibrate([50]);
   }
 
-  canClear(): boolean {
-    return this.clearDataString.toLocaleLowerCase() === "clear";
+
+  private eStop(): void {
+    this.controllerOrientation.stopPidTune();
+    this.controllerRotationRate.stopPidTune();
+
+    if (this.controllerOrientation.enabled)
+      this.controllerOrientation.enabled = false;
+
+    if (this.controllerRotationRate.enabled)
+      this.controllerRotationRate.enabled = false;
+  }
+
+
+  motor(power: number): void {
+    if (power === 0)
+      this.eStop();
+
+
+    this.motorControllerService.command(power);
+    this.vibrate();
   }
 
 }
 
 
-
-class LogData {
+export class LocationLogData {
   constructor(
-    public time: Date,
-    public lat: number,
-    public lon: number,
-    public desiredHeading: number,
-    public headingRaw: number,
-    public errorRaw: number,
-    public errorFiltered: number,
-    public command: number,
-    public autoPilotOn: boolean,
-    public speedKt: number,
-    public headingAvg: number,
+    public locationLat: number,
+    public locationLon: number,
+    public locationSpeedKt: number,
+    public locationDistanceFromTarget: number,
+    public locationGpsHeading: number,
   ) { }
 }

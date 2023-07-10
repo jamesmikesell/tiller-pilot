@@ -6,13 +6,13 @@
 #include <BLE2902.h>
 #include <driver/ledc.h>
 
-#define LED_PIN 2   // GPIO pin connected to the LED
-#define PIN_A 12    // GPIO pin connected to the LED
-#define PIN_B 13    // GPIO pin connected to the LED
-#define PMW_LED 0   // GPIO pin connected to the LED
-#define PMW_A 1     // GPIO pin connected to the LED
-#define PMW_B 2     // GPIO pin connected to the LED
-#define PMW_HZ 1000 // GPIO pin connected to the LED
+#define LED_PIN 2
+#define PIN_A 12
+#define PIN_B 13
+#define PMW_LED 0
+#define PMW_A 1
+#define PMW_B 2
+#define PMW_HZ 1
 
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
@@ -28,9 +28,11 @@ class MyServerCallbacks : public BLEServerCallbacks
 
   void onDisconnect(BLEServer *pServer)
   {
-    delay(500);                  // give the bluetooth stack the chance to get things ready
-    pServer->startAdvertising(); // restart advertising
-    // Nothing to do here
+    delay(500);
+    pServer->startAdvertising();
+    ledcWrite(PMW_A, 0);
+    ledcWrite(PMW_B, 0);
+    ledcWrite(PMW_LED, 0);
   }
 };
 
@@ -43,7 +45,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
     int speedA = 0;
     int speedB = 0;
-    //Forward vs reverse
+    // Forward vs reverse
     if (value[1] == 1)
       speedA = value[0];
     else
@@ -59,23 +61,23 @@ void setup()
   pinMode(LED_PIN, OUTPUT);
   pinMode(PIN_A, OUTPUT);
   pinMode(PIN_B, OUTPUT);
-  digitalWrite(LED_PIN, LOW); // Initially turn off the LED
-  digitalWrite(PIN_A, LOW);   // Initially turn off the LED
-  digitalWrite(PIN_B, LOW);   // Initially turn off the LED
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(PIN_A, LOW);
+  digitalWrite(PIN_B, LOW);
 
-  ledcSetup(PMW_LED, PMW_HZ, 8); // Configure PWM channel 0
-  ledcSetup(PMW_A, PMW_HZ, 8);   // Configure PWM channel 0
-  ledcSetup(PMW_B, PMW_HZ, 8);   // Configure PWM channel 0
+  ledcSetup(PMW_LED, PMW_HZ, 8);
+  ledcSetup(PMW_A, PMW_HZ, 8);
+  ledcSetup(PMW_B, PMW_HZ, 8);
   ledcAttachPin(LED_PIN, PMW_LED);
   ledcAttachPin(PIN_A, PMW_A);
   ledcAttachPin(PIN_B, PMW_B);
 
-  BLEDevice::init("Tiller Pilot"); // Set the name of your ESP32 device
+  BLEDevice::init("Tiller Pilot");
 
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
 
-  BLEService *pService = pServer->createService(SERVICE_UUID); // Use the Battery Service UUID
+  BLEService *pService = pServer->createService(SERVICE_UUID);
 
   pCharacteristic = pService->createCharacteristic(
       CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);

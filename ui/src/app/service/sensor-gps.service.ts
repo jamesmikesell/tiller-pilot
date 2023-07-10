@@ -4,10 +4,10 @@ import { BehaviorSubject, Subject } from 'rxjs';
 @Injectable({
   providedIn: 'root'
 })
-export class HeadingGpsService {
+export class SensorGpsService {
 
   desired = 0;
-  current = 0
+  currentHeading = 0
   update = new Subject<void>();
   private speedKt = 0;
   latitude = 0;
@@ -21,7 +21,7 @@ export class HeadingGpsService {
   private locationChange(locationData: GeolocationPosition): void {
     let heading = locationData.coords.heading;
     if (heading != null)
-      this.current = heading;
+      this.currentHeading = heading;
 
     this.latitude = locationData.coords.latitude;
     this.longitude = locationData.coords.longitude;
@@ -37,7 +37,7 @@ export class HeadingGpsService {
   }
 
   getError(): number {
-    let error = this.current - this.desired;
+    let error = this.currentHeading - this.desired;
     if (error > 180)
       return error - 360;
     if (error < -180)

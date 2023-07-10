@@ -3,13 +3,17 @@ import { BrowserModule } from '@angular/platform-browser';
 
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NgChartsModule } from 'ng2-charts';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { ChartComponent } from './component/chart/chart.component';
+import { ConfigComponent } from './component/config/config.component';
 import { TestComponent } from './component/test/test.component';
 
 
@@ -17,7 +21,8 @@ import { TestComponent } from './component/test/test.component';
   declarations: [
     AppComponent,
     TestComponent,
-    ChartComponent
+    ChartComponent,
+    ConfigComponent
   ],
   imports: [
     BrowserModule,
@@ -28,6 +33,9 @@ import { TestComponent } from './component/test/test.component';
     MatInputModule,
     MatSlideToggleModule,
     NgChartsModule,
+    MatSnackBarModule,
+    MatCardModule,
+    MatExpansionModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

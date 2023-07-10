@@ -10,12 +10,25 @@ export class ChartComponent {
 
   @Input()
   set data(val: AppChartData[]) { this.configureData(val); }
+  @Input()
+  set title(val: string) {
+    this.lineChartOptions.plugins.title.text = val;
+    this.lineChartOptions.plugins.title.display = !!val;
+  }
 
   lineChartData: ChartConfiguration<'scatter'>['data'];
 
   lineChartOptions: ChartOptions<'scatter'> = {
     responsive: true,
     animation: false,
+    hover: { mode: null },
+    plugins: {
+      tooltip: { enabled: false },
+      title: {
+        text: this.title,
+        display: true
+      }
+    }
   };
 
   constructor() { }
@@ -31,7 +44,8 @@ export class ChartComponent {
         {
           data: singleChart.data,
           backgroundColor: color,
-          pointRadius: 2,
+          pointRadius: 1.5,
+          borderWidth: 0,
           label: singleChart.title,
         }
       );
