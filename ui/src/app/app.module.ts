@@ -12,6 +12,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NgChartsModule } from 'ng2-charts';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { BlackoutComponent } from './component/blackout/blackout.component';
 import { ChartComponent } from './component/chart/chart.component';
 import { ConfigComponent } from './component/config/config.component';
 import { TestComponent } from './component/test/test.component';
@@ -22,7 +23,8 @@ import { TestComponent } from './component/test/test.component';
     AppComponent,
     TestComponent,
     ChartComponent,
-    ConfigComponent
+    ConfigComponent,
+    BlackoutComponent
   ],
   imports: [
     BrowserModule,

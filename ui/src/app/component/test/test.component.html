@@ -4,8 +4,11 @@
     <button mat-raised-button color="primary" (click)="toggleFullScreen()">
       {{isInFullscreenMode() ? "Exit Full Screen" : "Full Screen" }}
     </button>
+    <button mat-raised-button color="primary" (click)="blackoutScreen = true">Blackout</button>
   </div>
 </div>
+
+<app-blackout *ngIf="blackoutScreen" (click)="blackoutScreen = false"></app-blackout>
 
 
 <div>

@@ -27,6 +27,8 @@ export class TestComponent implements OnInit {
   btConnected = false;
   sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
   sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
+  blackoutScreen = false;
+
 
   private motorControllerService: MockBoatSensorAndTillerController | BtMotorControllerService;
 
