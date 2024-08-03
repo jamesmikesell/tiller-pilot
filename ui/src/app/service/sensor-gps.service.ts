@@ -14,7 +14,7 @@ export class SensorGpsService {
   longitude = 0;
 
   private speedKt = 0;
-  private locationHistory = new Map<string, LocationHistory>();
+  private locationHistory: LocationHistory[] = [];
 
   constructor() {
     navigator.geolocation.watchPosition((data) => this.locationChange(data), null, { enableHighAccuracy: true });
@@ -38,58 +38,47 @@ export class SensorGpsService {
 
 
   private tryAddLocationToHistory(locationData: GeolocationPosition) {
-    let locationItem = new LocationHistory(locationData.coords.latitude,
-      locationData.coords.longitude,
-      new Date(locationData.timestamp)
-    )
-    let key = this.getKey(locationItem);
-    if (this.locationHistory.has(key)) {
-      console.log("already have location history");
+    const minAccuracyMeters = 7;
+    if (locationData.coords.accuracy > minAccuracyMeters) {
+      console.log(`GPS accuracy ${locationData.coords.accuracy.toFixed(1)} is above ${minAccuracyMeters} meters, ignoring location`);
       return;
     }
 
+    let currentLocation = new LocationHistory(locationData.coords.latitude,
+      locationData.coords.longitude,
+      new Date(locationData.timestamp)
+    )
 
-    let maxHistoryItems = 10;
-    if (this.locationHistory.size >= maxHistoryItems) {
-      // oldest first
-      let newest = [...this.locationHistory.values()]
-        .sort((a, b) => b.time.getTime() - a.time.getTime())
-        .slice(0, maxHistoryItems - 1)
+    if (this.locationHistory.length > 0) {
+      let distanceFromOldest = SensorNavigationService.haversineDistanceInMeters(this.locationHistory[0], currentLocation);
+      if (distanceFromOldest < minAccuracyMeters) {
+        // add or update the current location so there are at least 2 items in the the array (the oldest and the current)
+        if (this.locationHistory.length === 1)
+          this.locationHistory.push(currentLocation);
+        else if (this.locationHistory.length > 1)
+          this.locationHistory[this.locationHistory.length - 1] = currentLocation;
 
-      this.locationHistory.clear();
-      newest.forEach(single => {
-        let tempKey = this.getKey(single);
-        this.locationHistory.set(tempKey, single);
-      })
+        return;
+      }
     }
 
-    this.locationHistory.set(key, locationItem);
+    // only keep the most recent location history
+    this.locationHistory = this.locationHistory.slice(-1)
+    this.locationHistory.push(currentLocation);
   }
 
 
   private getSpeedInKtsFromHistory(): number {
-    if (this.locationHistory.size < 2)
+    if (this.locationHistory.length < 2)
       return 0;
 
-    let newestFirst = [...this.locationHistory.values()]
-      .sort((a, b) => b.time.getTime() - a.time.getTime())
-
-    let newest = newestFirst[0];
-    let oldest = newestFirst[newestFirst.length - 1];
-    let distanceMeters = SensorNavigationService.haversineDistanceInMeters(newest.latitude,
-      newest.longitude,
-      oldest.latitude,
-      oldest.longitude
-    )
+    let oldest = this.locationHistory[0];
+    let newest = this.locationHistory[this.locationHistory.length - 1];
+    let distanceMeters = SensorNavigationService.haversineDistanceInMeters(newest, oldest);
 
     let timeInMs = newest.time.getTime() - oldest.time.getTime();
     let speedMetersPerSec = distanceMeters / (timeInMs / 1000);
     return speedMetersPerSec * 1.94384;
-  }
-
-
-  private getKey(locationData: LocationHistory): string {
-    return `${locationData.latitude}_${locationData.longitude}`
   }
 
 

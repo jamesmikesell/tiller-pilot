@@ -57,11 +57,11 @@ export class SensorNavigationService {
 
 
 
-  static haversineDistanceInMeters(latitude1: number, longitude1: number, latitude2: number, longitude2: number) {
-    const lat1 = this.toRadians(latitude1);
-    const lon1 = this.toRadians(longitude1);
-    const lat2 = this.toRadians(latitude2);
-    const lon2 = this.toRadians(longitude2);
+  static haversineDistanceInMeters(location1: Location, location2: Location) {
+    const lat1 = this.toRadians(location1.latitude);
+    const lon1 = this.toRadians(location1.longitude);
+    const lat2 = this.toRadians(location2.latitude);
+    const lon2 = this.toRadians(location2.longitude);
 
     const dLat = lat2 - lat1;
     const dLon = lon2 - lon1;
@@ -74,4 +74,10 @@ export class SensorNavigationService {
     return distance;
   }
 
+}
+
+
+interface Location {
+  latitude: number;
+  longitude: number;
 }
