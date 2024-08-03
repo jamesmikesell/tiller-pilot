@@ -68,6 +68,8 @@ export class ControllerOrientationService {
 
   private setDesiredHeadingToCurrent(): void {
     this.desired = this.getAverageHeading();
+    this.errorFilter = this.getFilter();
+    this.configurePidController();
   }
 
 
