@@ -24,13 +24,17 @@
 
 
 <div class="charts">
-  <app-chart *ngIf="configService.config.showGraphGps" [data]="chartGpsHeading" title="GPS Heading">
+  <app-chart *ngIf="configService.config.showGraphGps" [data]="chartGpsHeading" title="GPS Heading"
+    (dblclick)="clearGraphs()">
   </app-chart>
-  <app-chart *ngIf="configService.config.showGraphDistanceFromLine" [data]="chartNavigation" title="GPS Path Controller">
+  <app-chart *ngIf="configService.config.showGraphDistanceFromLine" [data]="chartNavigation" title="GPS Path Controller"
+    (dblclick)="clearGraphs()">
   </app-chart>
-  <app-chart *ngIf="configService.config.showGraphOrientation" [data]="chartOrientation" title="Orientation Controller (Zero is Set Point)">
+  <app-chart *ngIf="configService.config.showGraphOrientation" [data]="chartOrientation"
+    title="Orientation Controller (Zero is Set Point)" (dblclick)="clearGraphs()">
   </app-chart>
-  <app-chart *ngIf="configService.config.showGraphRotation" [data]="chartDataRotationRate" title="Rotation Rate Controller">
+  <app-chart *ngIf="configService.config.showGraphRotation" [data]="chartDataRotationRate"
+    title="Rotation Rate Controller" (dblclick)="clearGraphs()">
   </app-chart>
 </div>
 

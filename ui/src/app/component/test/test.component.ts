@@ -66,7 +66,7 @@ export class TestComponent implements OnInit {
   }
 
 
-  private clearGraphs(): void {
+  clearGraphs(): void {
     this.dataLog.clearLogData();
     this.updateCharts();
   }
