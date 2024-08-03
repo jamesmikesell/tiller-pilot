@@ -1,16 +1,16 @@
 import { Injectable } from '@angular/core';
+import { Subject, firstValueFrom } from 'rxjs';
+import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
+import { ConfigService } from './config.service';
 import { ControllerRotationRateService } from './controller-rotation-rate.service';
 import { ControllerOrientationLogData, DataLogService } from './data-log.service';
-import { HeadingStats } from './heading-stats';
-import { ChainedFilter, Filter, LowPassFilter, NotAFilter } from './filter';
-import { PidController } from './pid-controller';
-import { PidTuner, Sensor, TuneConfig } from './pid-tuner';
-import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
-import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
 import { DeviceSelectService } from './device-select.service';
-import { Subject, firstValueFrom } from 'rxjs';
+import { Filter, LowPassFilter } from './filter';
+import { HeadingStats } from './heading-stats';
+import { PidController } from './pid-controller';
+import { PidTuner, TuneConfig } from './pid-tuner';
 import { SensorGpsService } from './sensor-gps.service';
-import { ConfigService } from './config.service';
+import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
 
 @Injectable({
   providedIn: 'root'
@@ -57,7 +57,7 @@ export class ControllerOrientationService {
       this.configService.config.orientationKp,
       this.configService.config.orientationKi,
       this.configService.config.orientationKd,
-      new ChainedFilter(this.configService.config.orientationPidDerivativeLowPassFrequency, 1),
+      new LowPassFilter(this.configService.config.orientationPidDerivativeLowPassFrequency),
     );
   }
 
@@ -86,8 +86,8 @@ export class ControllerOrientationService {
     this.updateAverageHeading(heading.heading);
     let errorRaw = this.getError(heading.heading);
     let speedMultiplier = 1;
-      // also disabling speed compensation if we're truly stopped
-      if (!this.tuner && this.configService.config.orientationTuneSpeed && this.sensorLocation.getSpeedKt() > 0.01)
+    // also disabling speed compensation if we're truly stopped
+    if (!this.tuner && this.configService.config.orientationTuneSpeed && this.sensorLocation.getSpeedKt() > 0.01)
       speedMultiplier = this.configService.config.orientationTuneSpeed / this.sensorLocation.getSpeedKt();
 
     const errorFiltered = this.errorFilter.process(errorRaw, heading.time)
@@ -137,7 +137,7 @@ export class ControllerOrientationService {
 
 
   private getFilter(): Filter {
-    return new ChainedFilter(this.configService.config.orientationLowPassFrequency, 1);
+    return new LowPassFilter(this.configService.config.orientationLowPassFrequency);
   }
 
   stopPidTune() {

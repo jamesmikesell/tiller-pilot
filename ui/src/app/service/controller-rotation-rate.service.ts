@@ -1,16 +1,16 @@
 import { Injectable } from '@angular/core';
+import { Subject, firstValueFrom } from 'rxjs';
 import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
 import { BtMotorControllerService } from './bt-motor-controller.service';
+import { ConfigService } from './config.service';
 import { Controller } from './controller';
 import { ControllerRotationRateLogData, DataLogService } from './data-log.service';
 import { DeviceSelectService } from './device-select.service';
-import { ChainedFilter, Filter, LowPassFilter, NotAFilter } from './filter';
+import { Filter, LowPassFilter } from './filter';
 import { PidController } from './pid-controller';
-import { PidTuner, Sensor, TuneConfig } from './pid-tuner';
+import { PidTuner, TuneConfig } from './pid-tuner';
 import { SensorGpsService } from './sensor-gps.service';
 import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
-import { Subject, firstValueFrom, max } from 'rxjs';
-import { ConfigService } from './config.service';
 
 @Injectable({
   providedIn: 'root'
@@ -65,7 +65,7 @@ export class ControllerRotationRateService implements Controller {
       this.configService.config.rotationKp,
       this.configService.config.rotationKi,
       this.configService.config.rotationKd,
-      new ChainedFilter(this.configService.config.rotationPidDerivativeLowPassFrequency, 1),
+      new LowPassFilter(this.configService.config.rotationPidDerivativeLowPassFrequency),
     );
   }
 
@@ -147,7 +147,7 @@ export class ControllerRotationRateService implements Controller {
 
 
   private getFilter(): Filter {
-    return new ChainedFilter(this.configService.config.rotationLowPassFrequency, 1);
+    return new LowPassFilter(this.configService.config.rotationLowPassFrequency);
   }
 
   stopPidTune() {

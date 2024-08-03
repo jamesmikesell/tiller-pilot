@@ -1,4 +1,4 @@
-import { ChainedFilter, Filter, LowPassFilter, NotAFilter } from "./filter";
+import { Filter, NotAFilter } from "./filter";
 
 export class PidController {
   kP: number;
