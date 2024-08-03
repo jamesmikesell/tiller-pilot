@@ -71,6 +71,20 @@ export class TestComponent implements OnInit {
     this.updateCharts();
   }
 
+
+  toggleFullScreen(): void {
+    if (this.isInFullscreenMode())
+      document.exitFullscreen();
+    else
+      document.documentElement.requestFullscreen();
+  }
+
+
+  isInFullscreenMode(): boolean {
+    return !!document.fullscreenElement;
+  }
+
+
   private gpsLat: number;
   private gpsLon: number;
   private gpsHeading: number;

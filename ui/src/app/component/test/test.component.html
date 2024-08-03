@@ -1,5 +1,10 @@
-<div *ngIf="!btConnected" class="connect-container">
-  <button mat-raised-button color="primary" (click)="initBluetooth()">Connect BT</button>
+<div class="connect-container">
+  <div class="input-list">
+    <button *ngIf="!btConnected" mat-raised-button color="primary" (click)="initBluetooth()">Connect BT</button>
+    <button mat-raised-button color="primary" (click)="toggleFullScreen()">
+      {{isInFullscreenMode() ? "Exit Full Screen" : "Full Screen" }}
+    </button>
+  </div>
 </div>
 
 
