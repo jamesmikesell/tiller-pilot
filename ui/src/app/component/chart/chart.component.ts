@@ -4,7 +4,7 @@ import { ChartConfiguration, ChartData, ChartDataset, ChartOptions, Color, Scatt
 @Component({
   selector: 'app-chart',
   templateUrl: './chart.component.html',
-  styleUrls: ['./chart.component.css']
+  styleUrls: ['./chart.component.scss']
 })
 export class ChartComponent {
 
