@@ -1,9 +1,8 @@
 import { Injectable } from "@angular/core";
-import { BehaviorSubject, Subject, timer } from "rxjs";
+import { BehaviorSubject, timer } from "rxjs";
+import { ConfigService } from "../service/config.service";
 import { Controller } from "../service/controller";
 import { HeadingAndTime } from "../service/sensor-orientation.service";
-import { ConfigService } from "../service/config.service";
-
 
 
 @Injectable({
@@ -12,14 +11,17 @@ import { ConfigService } from "../service/config.service";
 export class MockBoatSensorAndTillerController implements Controller {
 
 
-  tillerAngle = 0;
-  heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, 0));
+  tillerAngle = -0.1;
+  heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, INITIAL_HEADING));
   connected = new BehaviorSubject<boolean>(true);
   enabled = false;
   get headingCurrentWithoutError(): number { return this.moveQueue[0].real }
   get currentMotorPower(): number { return this.tillerGainDegreesPerSecond / this.tillerPowerCoefficient };
 
-  private moveQueue: SensorWithNoise[] = [new SensorWithNoise(0, 0, 0), new SensorWithNoise(0, 0, 1)];
+  private moveQueue: SensorWithNoise[] = [
+    new SensorWithNoise(INITIAL_HEADING, INITIAL_HEADING, 0),
+    new SensorWithNoise(INITIAL_HEADING, INITIAL_HEADING, 1)
+  ];
   private tillerGainDegreesPerSecond = 0;
   private nextTillerDegreesPerSecond = 0;
   private tillerPowerCoefficient = 0.2;
@@ -123,3 +125,6 @@ class SensorWithNoise {
     public time: number,
   ) { }
 }
+
+
+const INITIAL_HEADING = 30;
