@@ -19,10 +19,12 @@ body {
   display: flex;
   flex-flow: wrap;
   margin-left: -10px;
+  margin-top: 10px;
 }
 
 .input-list>* {
   margin-left: 10px;
+  margin-top: 10px;
 }
 
 .flex-break {
