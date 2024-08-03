@@ -16,11 +16,11 @@ export class SensorNavigationService {
     longitudeCurrent: number
   ): number {
     // Convert degrees to radians
-    const latitudeStartRad = this.toRadians(latitudeStart);
-    const longitudeStartRad = this.toRadians(longitudeStart);
-    const latitudeCurrentRad = this.toRadians(latitudeCurrent);
-    const longitudeCurrentRad = this.toRadians(longitudeCurrent);
-    const headingRad = this.toRadians(headingDegrees);
+    const latitudeStartRad = SensorNavigationService.toRadians(latitudeStart);
+    const longitudeStartRad = SensorNavigationService.toRadians(longitudeStart);
+    const latitudeCurrentRad = SensorNavigationService.toRadians(latitudeCurrent);
+    const longitudeCurrentRad = SensorNavigationService.toRadians(longitudeCurrent);
+    const headingRad = SensorNavigationService.toRadians(headingDegrees);
 
     // Calculate great circle bearing between starting point and current point
     const deltaLongitude = longitudeCurrentRad - longitudeStartRad;
@@ -51,9 +51,27 @@ export class SensorNavigationService {
     return perpendicularDistance; // Distance in kilometers
   }
 
-  private toRadians(degrees: number): number {
+  private static toRadians(degrees: number): number {
     return degrees * (Math.PI / 180);
   }
 
+
+
+  static haversineDistanceInMeters(latitude1: number, longitude1: number, latitude2: number, longitude2: number) {
+    const lat1 = this.toRadians(latitude1);
+    const lon1 = this.toRadians(longitude1);
+    const lat2 = this.toRadians(latitude2);
+    const lon2 = this.toRadians(longitude2);
+
+    const dLat = lat2 - lat1;
+    const dLon = lon2 - lon1;
+
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const R = 6371000; // Radius of the Earth in meters
+    const distance = R * c;
+    return distance;
+  }
 
 }
