@@ -1,14 +1,10 @@
-import { Injectable } from '@angular/core';
 
-@Injectable({
-  providedIn: 'root'
-})
 export class SensorNavigationService {
 
-  constructor() { }
+  private static readonly EARTH_RADIUS_METERS = 6371e3;
 
 
-  calculateDistanceFromLine(
+  static calculateDistanceFromLineMeters(
     latitudeStart: number,
     longitudeStart: number,
     headingDegrees: number,
@@ -34,7 +30,6 @@ export class SensorNavigationService {
     const bearingDifference = headingRad - greatCircleBearing;
 
     // Calculate distance between starting point and current point
-    const earthRadius = 6371; // Earth's radius in kilometers
     const deltaLatitude = latitudeCurrentRad - latitudeStartRad;
     const a =
       Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2) +
@@ -43,13 +38,14 @@ export class SensorNavigationService {
       Math.sin(deltaLongitude / 2) *
       Math.sin(deltaLongitude / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = earthRadius * c;
+    const distance = SensorNavigationService.EARTH_RADIUS_METERS * c;
 
     // Calculate perpendicular distance from the line to the current point
     const perpendicularDistance = distance * Math.sin(bearingDifference);
 
     return perpendicularDistance; // Distance in kilometers
   }
+
 
   private static toRadians(degrees: number): number {
     return degrees * (Math.PI / 180);
@@ -69,8 +65,7 @@ export class SensorNavigationService {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    const R = 6371000; // Radius of the Earth in meters
-    const distance = R * c;
+    const distance = SensorNavigationService.EARTH_RADIUS_METERS * c;
     return distance;
   }
 

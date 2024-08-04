@@ -39,7 +39,6 @@ export class TestComponent implements OnInit {
     public controllerOrientation: ControllerOrientationService,
     public sensorGpsService: SensorGpsService,
     deviceSelectService: DeviceSelectService,
-    private navigationService: SensorNavigationService,
     private dataLog: DataLogService,
     private snackBar: MatSnackBar,
     public configService: ConfigService,
@@ -98,19 +97,19 @@ export class TestComponent implements OnInit {
   }
 
   private updateReceived(): void {
-    let distance = this.navigationService.calculateDistanceFromLine(
+    let distanceKm = SensorNavigationService.calculateDistanceFromLineMeters(
       this.gpsLat,
       this.gpsLon,
       this.gpsHeading,
       this.sensorGpsService.latitude,
       this.sensorGpsService.longitude
-    )
+    ) / 1000
 
     let logData = new LocationLogData(
       this.sensorGpsService.latitude,
       this.sensorGpsService.longitude,
       this.sensorGpsService.getSpeedKt(),
-      distance,
+      distanceKm,
       this.sensorGpsService.currentHeading
     )
 
