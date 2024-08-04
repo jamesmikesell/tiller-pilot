@@ -52,6 +52,30 @@ export class SensorNavigationService {
   }
 
 
+  private static toDegrees(radians: number): number {
+    return radians * (180 / Math.PI);
+  }
+
+
+  static calculateNewPosition(start: Location, distanceMeters: number, angleDegrees: number): Location {
+    const angularDistance = distanceMeters / SensorNavigationService.EARTH_RADIUS_METERS;
+    const bearing = this.toRadians(angleDegrees);
+
+    const lat1 = this.toRadians(start.latitude);
+    const lon1 = this.toRadians(start.longitude);
+
+    const lat2 = Math.asin(Math.sin(lat1) * Math.cos(angularDistance) +
+      Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing));
+
+    const lon2 = lon1 + Math.atan2(Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+      Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2));
+
+    return {
+      latitude: this.toDegrees(lat2),
+      longitude: this.toDegrees(lon2)
+    };
+  }
+
 
   static haversineDistanceInMeters(location1: Location, location2: Location) {
     const lat1 = this.toRadians(location1.latitude);
@@ -72,7 +96,7 @@ export class SensorNavigationService {
 }
 
 
-interface Location {
+export interface Location {
   latitude: number;
   longitude: number;
 }

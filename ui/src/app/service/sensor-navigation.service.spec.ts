@@ -81,4 +81,17 @@ describe('SensorNavigationService', () => {
 
 
 
+  it('calculate coordinate at distance and angle from location', () => {
+    let start = {
+      latitude: 40.1,
+      longitude: 37.2,
+    }
+
+    let position2 = SensorNavigationService.calculateNewPosition(start, 1, 30);
+    let distance = SensorNavigationService.haversineDistanceInMeters(start, position2);
+
+    expect(distance).toBeCloseTo(1, 5);
+  });
+
+
 });
