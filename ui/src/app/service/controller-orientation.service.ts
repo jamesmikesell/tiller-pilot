@@ -155,10 +155,10 @@ export class ControllerOrientationService {
       this.stopPidTune();
 
       let tuningMethod = results.pd;
-      this.configService.config.orientationKp = tuningMethod.kP;
-      this.configService.config.orientationKi = tuningMethod.kI;
-      this.configService.config.orientationKd = tuningMethod.kD;
-      this.configService.config.orientationTuneSpeed = this.sensorLocation.getSpeedKt();
+      this.configService.config.orientationKp = +tuningMethod.kP.toPrecision(4);
+      this.configService.config.orientationKi = +tuningMethod.kI.toPrecision(4);
+      this.configService.config.orientationKd = +tuningMethod.kD.toPrecision(4);
+      this.configService.config.orientationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
       this.configService.save();
 
       this.configurePidController();

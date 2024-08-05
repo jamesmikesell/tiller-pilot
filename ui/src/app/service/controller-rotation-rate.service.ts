@@ -163,10 +163,10 @@ export class ControllerRotationRateService implements Controller {
       this.stopPidTune();
 
       let tuningMethod = results.pid;
-      this.configService.config.rotationKp = tuningMethod.kP;
-      this.configService.config.rotationKi = tuningMethod.kI;
-      this.configService.config.rotationKd = tuningMethod.kD;
-      this.configService.config.rotationTuneSpeed = this.sensorLocation.getSpeedKt();
+      this.configService.config.rotationKp = +tuningMethod.kP.toPrecision(4);
+      this.configService.config.rotationKi = +tuningMethod.kI.toPrecision(4);
+      this.configService.config.rotationKd = +tuningMethod.kD.toPrecision(4);
+      this.configService.config.rotationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
       this.configService.save();
       this.configurePidController();
     }
