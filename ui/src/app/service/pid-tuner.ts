@@ -146,6 +146,9 @@ export class PidTuner {
     let tuningResults = this.calculateKuAndTu(processExtrema, controlAmplitude, lookBackSamples);
 
     let config = new PidTuningSuggestedValues();
+    config.p = this.createConfig(tuningResults, 0.5, 0, 0);
+    config.pi = this.createConfig(tuningResults, 0.45, 0.54, 0);
+    config.pd = this.createConfig(tuningResults, 0.8, 0, 0.1);
     config.pid = this.createConfig(tuningResults, 0.6, 1.2, 0.075);
     config.noOvershoot = this.createConfig(tuningResults, 0.2, 0.4, 2 / 30);
     config.pessen = this.createConfig(tuningResults, 0.7, 1.74, 0.105);
@@ -212,6 +215,9 @@ export class RelayTuningResults {
 
 
 export class PidTuningSuggestedValues {
+  p: PidConfig;
+  pi: PidConfig;
+  pd: PidConfig;
   pid: PidConfig;
   noOvershoot: PidConfig;
   pessen: PidConfig;
