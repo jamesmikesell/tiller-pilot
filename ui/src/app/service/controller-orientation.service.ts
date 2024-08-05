@@ -154,7 +154,7 @@ export class ControllerOrientationService {
     if (results) {
       this.stopPidTune();
 
-      let tuningMethod = results.pid;
+      let tuningMethod = results.pd;
       this.configService.config.orientationKp = tuningMethod.kP;
       this.configService.config.orientationKi = tuningMethod.kI;
       this.configService.config.orientationKd = tuningMethod.kD;
