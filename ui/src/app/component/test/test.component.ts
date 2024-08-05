@@ -1,5 +1,4 @@
 import { Component, HostListener, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { timer } from 'rxjs';
 import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
 import { BtMotorControllerService } from 'src/app/service/bt-motor-controller.service';
@@ -40,7 +39,6 @@ export class TestComponent implements OnInit {
     public sensorGpsService: SensorGpsService,
     deviceSelectService: DeviceSelectService,
     private dataLog: DataLogService,
-    private snackBar: MatSnackBar,
     public configService: ConfigService,
   ) {
     this.motorControllerService = deviceSelectService.motorController;
@@ -165,36 +163,6 @@ export class TestComponent implements OnInit {
     this.chartDataRotationRate = chartDataRotationRate;
     this.chartNavigation = chartNavigation;
     this.chartGpsHeading = chartGpsHeading;
-  }
-
-  async tune(): Promise<void> {
-    await this.tuneRotationRateController();
-    await this.tuneOrientationController();
-
-    this.controllerOrientation.maintainCurrentHeading();
-  }
-
-
-  private async tuneRotationRateController(): Promise<void> {
-    this.dataLog.clearLogData();
-
-    this.disableAllControllers();
-    await this.controllerRotationRate.startPidTune();
-    this.snackBar.open("1/2 - Rot. Rt. PID Tune Complete", "Dismiss")
-  }
-
-  private async tuneOrientationController(): Promise<void> {
-    this.dataLog.clearLogData();
-
-    this.disableAllControllers();
-    await this.controllerOrientation.startPidTune();
-    this.snackBar.open("2/2 - Orientation PID Tune Complete", "Dismiss")
-  }
-
-
-  private disableAllControllers(): void {
-    this.controllerOrientation.enabled = false;
-    this.controllerRotationRate.enabled = false;
   }
 
 
