@@ -1,11 +1,8 @@
 import { Filter, NotAFilter } from "./filter";
 
 export class PidController {
-  kP: number;
-  kI: number;
-  kD: number;
-
   saturationReached = false;
+  config: PidConfig;
 
   private target = 0;
   private integral = 0;
@@ -14,10 +11,8 @@ export class PidController {
   private previousOutput = 0;
   private derivativeFilter: Filter;
 
-  constructor(kP: number, kI: number, kD: number, derivativeFilter = new NotAFilter()) {
-    this.kP = kP;
-    this.kI = kI;
-    this.kD = kD;
+  constructor(config: PidConfig, derivativeFilter = new NotAFilter()) {
+    this.config = config;
     this.derivativeFilter = derivativeFilter;
   }
 
@@ -31,17 +26,17 @@ export class PidController {
     const error = this.target - currentValue;
 
     // Proportional term
-    const proportional = this.kP * error;
+    const proportional = this.config.kP * error;
 
     // Integral term
     let errorAndPreviousOutputSameSign = error * this.previousOutput > 0;
     // clamp integration if saturation is reached and the sign of the last output is the same as the current error to prevent windup
-    if (!this.saturationReached || !errorAndPreviousOutputSameSign) 
+    if (!this.saturationReached || !errorAndPreviousOutputSameSign)
       this.integral += error * dt;
-    const integral = this.kI * this.integral;
+    const integral = this.config.kI * this.integral;
 
     // Derivative term
-    const derivative = this.kD * this.derivativeFilter.process(error - this.previousError, time) / dt;
+    const derivative = this.config.kD * this.derivativeFilter.process(error - this.previousError, time) / dt;
 
     const output = proportional + integral + derivative;
     this.previousOutput = output;
@@ -55,3 +50,8 @@ export class PidController {
 
 }
 
+export interface PidConfig {
+  kP: number;
+  kI: number;
+  kD: number;
+}

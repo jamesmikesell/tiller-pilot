@@ -7,7 +7,7 @@ import { Controller } from './controller';
 import { ControllerRotationRateLogData, DataLogService } from './data-log.service';
 import { DeviceSelectService } from './device-select.service';
 import { Filter, LowPassFilter } from './filter';
-import { PidController } from './pid-controller';
+import { PidConfig, PidController } from './pid-controller';
 import { PidTuner, PidTuningSuggestedValues, TuneConfig, TuningResult } from './pid-tuner';
 import { SensorGpsService } from './sensor-gps.service';
 import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
@@ -61,11 +61,16 @@ export class ControllerRotationRateService implements Controller {
 
 
   private configurePidController(): void {
+    let self = this;
+    let config: PidConfig = {
+      get kP(): number { return self.configService.config.rotationKp; },
+      get kI(): number { return self.configService.config.rotationKi; },
+      get kD(): number { return self.configService.config.rotationKd; },
+    }
+
     this.pidController = new PidController(
-      this.configService.config.rotationKp,
-      this.configService.config.rotationKi,
-      this.configService.config.rotationKd,
-      new LowPassFilter(this.configService.config.rotationPidDerivativeLowPassFrequency),
+      config,
+      new LowPassFilter({ getCutoffFrequency: () => this.configService.config.rotationPidDerivativeLowPassFrequency }),
     );
   }
 
@@ -145,7 +150,7 @@ export class ControllerRotationRateService implements Controller {
 
 
   private getFilter(): Filter {
-    return new LowPassFilter(this.configService.config.rotationLowPassFrequency);
+    return new LowPassFilter({ getCutoffFrequency: () => this.configService.config.rotationLowPassFrequency });
   }
 
 

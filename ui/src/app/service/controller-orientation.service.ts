@@ -7,7 +7,7 @@ import { ControllerOrientationLogData, DataLogService } from './data-log.service
 import { DeviceSelectService } from './device-select.service';
 import { Filter, LowPassFilter } from './filter';
 import { HeadingStats } from './heading-stats';
-import { PidController } from './pid-controller';
+import { PidConfig, PidController } from './pid-controller';
 import { PidTuner, PidTuningSuggestedValues, TuneConfig, TuningResult } from './pid-tuner';
 import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
 
@@ -50,11 +50,16 @@ export class ControllerOrientationService {
 
 
   private configurePidController(): void {
+    let self = this;
+    let config: PidConfig = {
+      get kP(): number { return self.configService.config.orientationKp; },
+      get kI(): number { return self.configService.config.orientationKi; },
+      get kD(): number { return self.configService.config.orientationKd; },
+    }
+
     this.pidController = new PidController(
-      this.configService.config.orientationKp,
-      this.configService.config.orientationKi,
-      this.configService.config.orientationKd,
-      new LowPassFilter(this.configService.config.orientationPidDerivativeLowPassFrequency),
+      config,
+      new LowPassFilter({ getCutoffFrequency: () => this.configService.config.orientationPidDerivativeLowPassFrequency }),
     );
   }
 
@@ -132,7 +137,7 @@ export class ControllerOrientationService {
 
 
   private getFilter(): Filter {
-    return new LowPassFilter(this.configService.config.orientationLowPassFrequency);
+    return new LowPassFilter({ getCutoffFrequency: () => this.configService.config.orientationLowPassFrequency });
   }
 
 
@@ -156,7 +161,7 @@ export class ControllerOrientationService {
     this.tuner?.sensorValueUpdated(headingError, time);
   }
 
-  
+
   private pidTuneSuccess(suggestedPidValues: PidTuningSuggestedValues): void {
     let tuningMethod = suggestedPidValues.pd;
     this.configService.config.orientationKp = +tuningMethod.kP.toPrecision(4);

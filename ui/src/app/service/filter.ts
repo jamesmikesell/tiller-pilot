@@ -1,11 +1,17 @@
 
 export class LowPassFilter implements Filter {
-  private cutoffFrequency: number;
+  private cutoffFrequencyConfig: CutoffFrequencyConfig;
   private prevOutput: number;
   private previousTime: number;
 
-  constructor(cutoffFrequency: number) {
-    this.cutoffFrequency = cutoffFrequency;
+  constructor(cutoffFrequency: number | CutoffFrequencyConfig) {
+    if (typeof cutoffFrequency === 'number') {
+      this.cutoffFrequencyConfig = {
+        getCutoffFrequency() { return cutoffFrequency; },
+      }
+    } else {
+      this.cutoffFrequencyConfig = cutoffFrequency;
+    }
   }
 
   process(input: number, time: number): number {
@@ -15,7 +21,7 @@ export class LowPassFilter implements Filter {
       return input;
     }
 
-    const RC = 1 / (2 * Math.PI * this.cutoffFrequency);
+    const RC = 1 / (2 * Math.PI * this.cutoffFrequencyConfig.getCutoffFrequency());
     const dt = (time - this.previousTime) / 1000;
     const alpha = dt / (RC + dt);
 
@@ -63,4 +69,9 @@ export class NotAFilter implements Filter {
 
 export interface Filter {
   process(input: number, time: number): number;
+}
+
+
+export interface CutoffFrequencyConfig {
+  getCutoffFrequency: () => number;
 }

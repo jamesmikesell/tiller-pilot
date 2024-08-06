@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import { Controller } from './controller';
+import { PidConfig } from './pid-controller';
 
 export class PidTuner {
 
@@ -170,10 +171,11 @@ export class PidTuner {
 
 
   private createConfig(tuningResults: RelayTuningResults, kPv: number, kIv: number, kDv: number): PidConfig {
-    let config = new PidConfig();
-    config.kP = kPv * tuningResults.Ku;
-    config.kI = kIv * tuningResults.Ku / tuningResults.Tu;
-    config.kD = kDv * tuningResults.Ku * tuningResults.Tu;
+    let config = {
+      kP: kPv * tuningResults.Ku,
+      kI: kIv * tuningResults.Ku / tuningResults.Tu,
+      kD: kDv * tuningResults.Ku * tuningResults.Tu,
+    }
 
     return config;
   }
@@ -211,11 +213,6 @@ export class Point {
   }
 }
 
-export class PidConfig {
-  kP: number;
-  kI: number;
-  kD: number;
-}
 
 export class RelayTuningResults {
   constructor(
