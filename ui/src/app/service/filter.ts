@@ -55,7 +55,7 @@ export class ChainedFilter implements Filter {
 
 
 export class NotAFilter implements Filter {
-  process(input: number, time: number): number {
+  process(input: number, _time: number): number {
     return input;
   }
 }

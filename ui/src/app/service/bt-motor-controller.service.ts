@@ -57,7 +57,7 @@ export class BtMotorControllerService implements Controller {
     try {
       let device = await navigator.bluetooth.requestDevice(config);
       this.gatt = device.gatt;
-      device.addEventListener("gattserverdisconnected", event => this.bluetoothDisconnected());
+      device.addEventListener("gattserverdisconnected", _event => this.bluetoothDisconnected());
       console.log('Connecting to GATT Server...');
       let server = await device.gatt.connect();
       console.log('Getting Service...');

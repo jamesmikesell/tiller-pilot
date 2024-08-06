@@ -7,9 +7,6 @@ export class PidController {
 
   saturationReached = false;
 
-  private _kP: number;
-  private _kI: number;
-  private _kD: number;
   private target = 0;
   private integral = 0;
   private previousError = 0;

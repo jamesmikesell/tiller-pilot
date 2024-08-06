@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { classToPlain, instanceToPlain, plainToClass, plainToInstance } from 'class-transformer';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 
 @Injectable({
   providedIn: 'root'

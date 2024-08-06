@@ -1,10 +1,9 @@
 import { Injectable } from '@angular/core';
 import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
 import { BtMotorControllerService } from './bt-motor-controller.service';
-import { Controller } from './controller';
-import { SensorOrientationService } from './sensor-orientation.service';
-import { SensorGpsService } from './sensor-gps.service';
 import { ConfigService } from './config.service';
+import { SensorGpsService } from './sensor-gps.service';
+import { SensorOrientationService } from './sensor-orientation.service';
 
 @Injectable({
   providedIn: 'root'

@@ -142,7 +142,6 @@ export class TestComponent implements OnInit {
     let gpsHeading = new AppChartData("GPS Heading", []);
     let chartGpsHeading: AppChartData[] = [gpsHeading];
 
-    const now = Date.now();
     this.dataLog.logData
       // .filter(single => now - single.time.getTime() < 10000)
       .forEach(singleLog => {

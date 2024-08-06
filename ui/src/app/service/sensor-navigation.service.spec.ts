@@ -1,4 +1,3 @@
-import { TestBed } from '@angular/core/testing';
 
 import { SensorNavigationService } from './sensor-navigation.service';
 
