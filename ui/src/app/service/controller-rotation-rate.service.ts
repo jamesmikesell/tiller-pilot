@@ -181,7 +181,7 @@ export class ControllerRotationRateService implements Controller {
     this.configService.config.rotationKi = +tuningMethod.kI.toPrecision(4);
     this.configService.config.rotationKd = +tuningMethod.kD.toPrecision(4);
     this.configService.config.rotationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
-    this.configService.save();
+
     this.configurePidController();
   }
 

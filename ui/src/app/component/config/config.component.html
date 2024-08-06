@@ -1,4 +1,10 @@
 <div class="config-container">
+  <h2>Note:</h2>
+  <p>
+    Changes to any of the following config values (including auto tune results) will not be persisted after a refresh,
+    unless the <code>save</code> button at the bottom is clicked.
+  </p>
+  <br>
 
   <mat-card>
     <mat-card-header>
@@ -8,7 +14,7 @@
     <mat-card-content>
       <div class="input-list">
         <mat-slide-toggle [(ngModel)]="configService.config.simulation">
-          Simulation Mode (refresh page after changing)
+          Simulation Mode (save and refresh page after changing to take effect)
         </mat-slide-toggle>
 
         <div class="flex-break"></div>
@@ -253,7 +259,16 @@
 
 
   <div>
-    <button mat-raised-button color="primary" (click)="configService.save(); refresh();">
+    <br>
+    <br>
+    <h3>Note:</h3>
+    <p>
+      Any changes made above (including auto tune results) will not be persisted after a refresh unless
+      <code>save</code> is clicked.
+    </p>
+    <br>
+
+    <button mat-raised-button color="primary" (click)="configService.save()">
       Save
     </button>
   </div>

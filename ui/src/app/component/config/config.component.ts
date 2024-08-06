@@ -39,11 +39,6 @@ export class ConfigComponent implements OnInit {
   }
 
 
-  refresh(): void {
-    location.reload();
-  }
-
-
   clearGraphs(): void {
     this.dataLog.clearLogData();
   }
