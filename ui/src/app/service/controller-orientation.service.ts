@@ -8,7 +8,7 @@ import { DeviceSelectService } from './device-select.service';
 import { Filter, LowPassFilter } from './filter';
 import { HeadingStats } from './heading-stats';
 import { PidController } from './pid-controller';
-import { PidTuner, TuneConfig } from './pid-tuner';
+import { PidTuner, PidTuningSuggestedValues, TuneConfig, TuningResult } from './pid-tuner';
 import { SensorGpsService } from './sensor-gps.service';
 import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
 
@@ -33,7 +33,7 @@ export class ControllerOrientationService {
   private tuner: PidTuner;
   private sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
   private sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
-  private pidTuneComplete = new Subject<void>();
+  private pidTuneComplete = new Subject<TuningResult>();
 
 
 
@@ -142,31 +142,41 @@ export class ControllerOrientationService {
     return new LowPassFilter(this.configService.config.orientationLowPassFrequency);
   }
 
-  stopPidTune() {
+
+  private finalizePidTune(): void {
     this.rotationRateController.command(0);
     this.tuner = undefined;
-    this.pidTuneComplete.next();
+  }
+
+
+  cancelPidTune(): void {
+    this.finalizePidTune();
+    this.pidTuneComplete.next({
+      success: false,
+      description: "PID Tuning Canceled",
+      suggestedValues: undefined,
+    })
   }
 
 
   private processPidAutoTuneUpdate(headingError: number, time: number): void {
-    let results = this.tuner?.sensorValueUpdated(headingError, time);
-    if (results) {
-      this.stopPidTune();
+    this.tuner?.sensorValueUpdated(headingError, time);
+  }
 
-      let tuningMethod = results.pd;
-      this.configService.config.orientationKp = +tuningMethod.kP.toPrecision(4);
-      this.configService.config.orientationKi = +tuningMethod.kI.toPrecision(4);
-      this.configService.config.orientationKd = +tuningMethod.kD.toPrecision(4);
-      this.configService.config.orientationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
-      this.configService.save();
+  
+  private pidTuneSuccess(suggestedPidValues: PidTuningSuggestedValues): void {
+    let tuningMethod = suggestedPidValues.pd;
+    this.configService.config.orientationKp = +tuningMethod.kP.toPrecision(4);
+    this.configService.config.orientationKi = +tuningMethod.kI.toPrecision(4);
+    this.configService.config.orientationKd = +tuningMethod.kD.toPrecision(4);
+    this.configService.config.orientationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
+    this.configService.save();
 
-      this.configurePidController();
-    }
+    this.configurePidController();
   }
 
 
-  async startPidTune(): Promise<void> {
+  async startPidTune(): Promise<TuningResult> {
     let tuneConfig = new TuneConfig();
     tuneConfig.setPoint = 0;
     tuneConfig.step = 1;
@@ -179,6 +189,12 @@ export class ControllerOrientationService {
     this.setDesiredHeadingToCurrent();
     this._enabled = false;
     this.tuner = new PidTuner(this.rotationRateController, tuneConfig);
+    this.tuner.tuneComplete.subscribe(result => {
+      this.finalizePidTune();
+      if (result.success)
+        this.pidTuneSuccess(result.suggestedValues);
+      this.pidTuneComplete.next(result);
+    })
 
     return await firstValueFrom(this.pidTuneComplete);
   }

@@ -1,3 +1,4 @@
+import { Subject } from 'rxjs';
 import { Controller } from './controller';
 
 export class PidTuner {
@@ -8,6 +9,8 @@ export class PidTuner {
   private cyclesCompleted = 0;
   private isSteppingUp = false;
 
+  tuneComplete = new Subject<TuningResult>();
+
 
   constructor(
     private controller: Controller,
@@ -15,7 +18,7 @@ export class PidTuner {
   ) { }
 
 
-  sensorValueUpdated(value: number, time: number): PidTuningSuggestedValues {
+  sensorValueUpdated(value: number, time: number): void {
     let noiseBand = this.config.noiseBand;
     if (this.cyclesCompleted >= this.config.disableNoiseBandAfterCycle)
       noiseBand = 0;
@@ -54,7 +57,12 @@ export class PidTuner {
           let extremaProcess = this.findLocalExtrema(this.mostRecent2CyclePeaks);
           let suggestedPidValues = this.calculatePidConfigs(extremaProcess, this.config.step * 2);
 
-          return suggestedPidValues;
+          this.tuneComplete.next({
+            success: true,
+            description: "Tunning completed successfully",
+            suggestedValues: suggestedPidValues,
+          })
+          return;
         }
 
         this.mostRecent2CyclePeaks.splice(0, this.mostRecent2CyclePeaks.length - 3)
@@ -67,12 +75,15 @@ export class PidTuner {
     if (this.cyclesCompleted > this.config.maxCycleCount) {
       this.controller.stop();
 
-      console.log("PID Tuning timed out without finding consistent results");
-      return new PidTuningSuggestedValues();
+      this.tuneComplete.next({
+        success: false,
+        description: "PID Tuning timed out without finding consistent results",
+        suggestedValues: undefined,
+      })
+      return;
     }
 
     this.controller.command(command);
-    return null;
   }
 
 
@@ -144,14 +155,15 @@ export class PidTuner {
   private calculatePidConfigs(processExtrema: Point[], controlAmplitude: number, lookBackSamples = 4): PidTuningSuggestedValues {
     let tuningResults = this.calculateKuAndTu(processExtrema, controlAmplitude, lookBackSamples);
 
-    let config = new PidTuningSuggestedValues();
-    config.p = this.createConfig(tuningResults, 0.5, 0, 0);
-    config.pi = this.createConfig(tuningResults, 0.45, 0.54, 0);
-    config.pd = this.createConfig(tuningResults, 0.8, 0, 0.1);
-    config.pid = this.createConfig(tuningResults, 0.6, 1.2, 0.075);
-    config.noOvershoot = this.createConfig(tuningResults, 0.2, 0.4, 2 / 30);
-    config.pessen = this.createConfig(tuningResults, 0.7, 1.74, 0.105);
-    config.someOvershoot = this.createConfig(tuningResults, 1 / 3, 2 / 3, 1 / 9);
+    let config = {
+      p: this.createConfig(tuningResults, 0.5, 0, 0),
+      pi: this.createConfig(tuningResults, 0.45, 0.54, 0),
+      pd: this.createConfig(tuningResults, 0.8, 0, 0.1),
+      pid: this.createConfig(tuningResults, 0.6, 1.2, 0.075),
+      noOvershoot: this.createConfig(tuningResults, 0.2, 0.4, 2 / 30),
+      pessen: this.createConfig(tuningResults, 0.7, 1.74, 0.105),
+      someOvershoot: this.createConfig(tuningResults, 1 / 3, 2 / 3, 1 / 9),
+    }
 
     return config;
   }
@@ -213,7 +225,7 @@ export class RelayTuningResults {
 }
 
 
-export class PidTuningSuggestedValues {
+export interface PidTuningSuggestedValues {
   p: PidConfig;
   pi: PidConfig;
   pd: PidConfig;
@@ -231,4 +243,11 @@ export class TuneConfig {
   noiseBand = 0;
   allowedAmplitudeVariance = 0.10;
   disableNoiseBandAfterCycle = 2;
+}
+
+
+export interface TuningResult {
+  success: boolean;
+  description: string;
+  suggestedValues: PidTuningSuggestedValues;
 }

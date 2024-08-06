@@ -7,6 +7,7 @@ import { ControllerOrientationService } from 'src/app/service/controller-orienta
 import { ControllerRotationRateService } from 'src/app/service/controller-rotation-rate.service';
 import { DataLogService } from 'src/app/service/data-log.service';
 import { DeviceSelectService } from 'src/app/service/device-select.service';
+import { TuningResult } from 'src/app/service/pid-tuner';
 
 @Component({
   selector: 'app-config',
@@ -53,28 +54,47 @@ export class ConfigComponent implements OnInit {
   }
 
 
-  async tuneRotationOnly(): Promise<void> {
-    this.dataLog.clearLogData();
+  async tuneRotationOnly(): Promise<TuningResult> {
+    setTimeout(() => {
+      this.dataLog.clearLogData();
+    }, 500);
 
     this.disableAllControllers();
-    await this.controllerRotationRate.startPidTune();
-    this.snackBar.open("Rot. Rt. PID Tune Complete", "Dismiss")
+    let tuneResult = await this.controllerRotationRate.startPidTune();
+    if (tuneResult.success)
+      this.snackBar.open("Rot. Rt. PID Tune Complete", "Dismiss");
+    else
+      this.snackBar.open(`Rot. Rt. PID Tune Failed: ${tuneResult.description}`, "Dismiss")
+
+    return tuneResult;
   }
 
 
-  async tuneOrientationOnly(): Promise<void> {
-    this.dataLog.clearLogData();
+  async tuneOrientationOnly(): Promise<TuningResult> {
+    setTimeout(() => {
+      this.dataLog.clearLogData();
+    }, 500);
 
     this.disableAllControllers();
-    await this.controllerOrientation.startPidTune();
-    this.snackBar.open("Orientation PID Tune Complete", "Dismiss")
+    let tuneResult = await this.controllerOrientation.startPidTune();
+    if (tuneResult.success)
+      this.snackBar.open("Orientation PID Tune Complete", "Dismiss")
+    else
+      this.snackBar.open(`Orientation PID Tune Failed: ${tuneResult.description}`, "Dismiss")
+
+    return tuneResult;
   }
 
 
   async tuneAll(): Promise<void> {
-    await this.tuneRotationOnly();
+    let rotationRateResults = await this.tuneRotationOnly();
+    if (!rotationRateResults.success)
+      return;
     this.snackBar.open("1/2 - Rot. Rt. PID Tune Complete", "Dismiss")
-    await this.tuneOrientationOnly();
+
+    let orientationResult = await this.tuneOrientationOnly();
+    if (!orientationResult.success)
+      return;
     this.snackBar.open("2/2 - Orientation PID Tune Complete", "Dismiss")
 
     this.controllerOrientation.maintainCurrentHeading();

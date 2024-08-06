@@ -187,8 +187,8 @@ export class TestComponent implements OnInit {
   }
 
   stopManually(): void {
-    this.controllerRotationRate.stopPidTune();
-    this.controllerOrientation.stopPidTune();
+    this.controllerRotationRate.cancelPidTune();
+    this.controllerOrientation.cancelPidTune();
 
     if (this.controllerOrientation.enabled)
       this.controllerOrientation.enabled = false;
@@ -204,8 +204,8 @@ export class TestComponent implements OnInit {
 
 
   private eStop(): void {
-    this.controllerOrientation.stopPidTune();
-    this.controllerRotationRate.stopPidTune();
+    this.controllerOrientation.cancelPidTune();
+    this.controllerRotationRate.cancelPidTune();
 
     if (this.controllerOrientation.enabled)
       this.controllerOrientation.enabled = false;
