@@ -9,7 +9,6 @@ import { Filter, LowPassFilter } from './filter';
 import { HeadingStats } from './heading-stats';
 import { PidController } from './pid-controller';
 import { PidTuner, PidTuningSuggestedValues, TuneConfig, TuningResult } from './pid-tuner';
-import { SensorGpsService } from './sensor-gps.service';
 import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
 
 @Injectable({
@@ -32,7 +31,6 @@ export class ControllerOrientationService {
   private _enabled = false;
   private tuner: PidTuner;
   private sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
-  private sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
   private pidTuneComplete = new Subject<TuningResult>();
 
 
@@ -44,7 +42,6 @@ export class ControllerOrientationService {
     private dataLog: DataLogService,
   ) {
     this.sensorOrientation = deviceSelectService.orientationSensor;
-    this.sensorLocation = deviceSelectService.locationSensor;
 
     this.configurePidController();
 
@@ -87,16 +84,12 @@ export class ControllerOrientationService {
   private updateReceived(heading: HeadingAndTime): void {
     this.updateAverageHeading(heading.heading);
     let errorRaw = this.getError(heading.heading);
-    let speedMultiplier = 1;
-    // also disabling speed compensation if we're truly stopped
-    if (!this.tuner && this.configService.config.orientationTuneSpeed && this.sensorLocation.getSpeedKt() > 0.01)
-      speedMultiplier = this.configService.config.orientationTuneSpeed / this.sensorLocation.getSpeedKt();
 
     const errorFiltered = this.errorFilter.process(errorRaw, heading.time)
 
-    this.processPidAutoTuneUpdate(errorRaw, heading.time);
+    this.processPidAutoTuneUpdate(errorFiltered, heading.time);
 
-    let command = this.pidController.update(errorFiltered * speedMultiplier, heading.time);
+    let command = this.pidController.update(errorFiltered, heading.time);
 
     const maxRate = this.rotationRateController.maxRotationRate;
     this.pidController.saturationReached = Math.abs(command) > maxRate;
@@ -169,7 +162,6 @@ export class ControllerOrientationService {
     this.configService.config.orientationKp = +tuningMethod.kP.toPrecision(4);
     this.configService.config.orientationKi = +tuningMethod.kI.toPrecision(4);
     this.configService.config.orientationKd = +tuningMethod.kD.toPrecision(4);
-    this.configService.config.orientationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
     this.configService.save();
 
     this.configurePidController();

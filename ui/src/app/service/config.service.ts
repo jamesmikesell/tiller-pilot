@@ -45,7 +45,6 @@ export class AppConfig {
   orientationKd = 0;
   orientationPidDerivativeLowPassFrequency = 1;
   orientationLowPassFrequency = 1;
-  orientationTuneSpeed: number;
   orientationTuneNoiseBand = 0.5;
   orientationTuneAllowedVariance = 10;
   orientationTuneDisableNoiseBandCycles = 2;

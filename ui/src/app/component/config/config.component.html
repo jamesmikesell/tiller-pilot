@@ -173,14 +173,6 @@
         <div class="flex-break"></div>
 
 
-        <mat-form-field>
-          <mat-label>Boat Speed During Tuning</mat-label>
-          <input matInput type="number" [(ngModel)]="configService.config.orientationTuneSpeed">
-        </mat-form-field>
-
-
-        <div class="flex-break"></div>
-
         <button *ngIf="btConnected" mat-raised-button color="primary" (click)="tuneOrientationOnly()">
           Tune Orientation Controller
         </button>
