@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
 import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
-import { ConfigService } from './config.service';
+import { ConfigService, PidTuneSaver } from './config.service';
 import { ControllerRotationRateService } from './controller-rotation-rate.service';
 import { ControllerOrientationLogData, DataLogService } from './data-log.service';
 import { DeviceSelectService } from './device-select.service';
@@ -161,10 +161,17 @@ export class ControllerOrientationService {
 
 
   private pidTuneSuccess(suggestedPidValues: PidTuningSuggestedValues): void {
-    let tuningMethod = suggestedPidValues.pd;
+    let tuningMethod = suggestedPidValues.p;
     this.configService.config.orientationKp = +tuningMethod.kP.toPrecision(4);
     this.configService.config.orientationKi = +tuningMethod.kI.toPrecision(4);
     this.configService.config.orientationKd = +tuningMethod.kD.toPrecision(4);
+
+    let configValues = PidTuneSaver.convert(suggestedPidValues,
+      this.configService.config.orientationLowPassFrequency,
+      this.configService.config.orientationPidDerivativeLowPassFrequency)
+
+    let existing = this.configService.config.orientationConfigs || []
+    this.configService.config.orientationConfigs = [...configValues, ...existing]
 
     this.maintainCurrentHeading();
   }

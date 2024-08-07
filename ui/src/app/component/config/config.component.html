@@ -105,6 +105,30 @@
 
         <div class="flex-break"></div>
 
+        <mat-form-field>
+          <mat-select placeholder="Configs" [(value)]="selectedRotationConfig" multiple>
+            <mat-option *ngFor="let single of configService.config.rotationConfigs" [value]="single">
+              {{single.title}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button *ngIf="selectedRotationConfig && selectedRotationConfig.length === 1" mat-raised-button color="primary"
+          (click)="loadSelectedRotation()">
+          Load Selected
+        </button>
+
+        <button *ngIf="selectedRotationConfig" mat-raised-button color="primary" (click)="deleteSelectedRotation()">
+          Delete Selected
+        </button>
+
+        <button mat-raised-button color="primary"
+          (click)="addCurrentRotation()">
+          Add Current Values
+        </button>
+
+        <div class="flex-break"></div>
+
         <button *ngIf="btConnected" mat-raised-button color="primary" (click)="tuneRotationOnly()">
           Tune Rotation Rate Controller
         </button>
@@ -178,6 +202,30 @@
 
         <div class="flex-break"></div>
 
+        <mat-form-field>
+          <mat-select placeholder="Configs" [(value)]="selectedOrientationConfig" multiple>
+            <mat-option *ngFor="let single of configService.config.orientationConfigs" [value]="single">
+              {{single.title}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button *ngIf="selectedOrientationConfig && selectedOrientationConfig.length === 1" mat-raised-button
+          color="primary" (click)="loadSelectedOrientation()">
+          Load Selected
+        </button>
+
+        <button *ngIf="selectedOrientationConfig" mat-raised-button color="primary"
+          (click)="deleteSelectedOrientation()">
+          Delete Selected
+        </button>
+
+        <button mat-raised-button color="primary"
+          (click)="addCurrentOrientation()">
+          Add Current Values
+        </button>
+
+        <div class="flex-break"></div>
 
         <button *ngIf="btConnected" mat-raised-button color="primary" (click)="tuneOrientationOnly()">
           Tune Orientation Controller
@@ -200,10 +248,6 @@
 
     <mat-card-content>
       <div class="input-list">
-
-        <button *ngIf="btConnected" mat-raised-button color="primary" (click)="tuneAll()">
-          Tune All Controllers
-        </button>
 
         <button mat-raised-button color="primary" (click)="downloadLog()">Download Log</button>
 

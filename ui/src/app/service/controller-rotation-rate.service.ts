@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
 import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
 import { BtMotorControllerService } from './bt-motor-controller.service';
-import { ConfigService } from './config.service';
+import { ConfigService, PidTuneSaver, RotationControllerConfig } from './config.service';
 import { Controller } from './controller';
 import { ControllerRotationRateLogData, DataLogService } from './data-log.service';
 import { DeviceSelectService } from './device-select.service';
@@ -173,11 +173,23 @@ export class ControllerRotationRateService implements Controller {
 
 
   private pidTuneSuccess(suggestedPidValues: PidTuningSuggestedValues): void {
-    let tuningMethod = suggestedPidValues.pid;
+    let tuningMethod = suggestedPidValues.p;
     this.configService.config.rotationKp = +tuningMethod.kP.toPrecision(4);
     this.configService.config.rotationKi = +tuningMethod.kI.toPrecision(4);
     this.configService.config.rotationKd = +tuningMethod.kD.toPrecision(4);
     this.configService.config.rotationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
+
+    let configValues = PidTuneSaver.convert(suggestedPidValues,
+      this.configService.config.rotationLowPassFrequency,
+      this.configService.config.rotationPidDerivativeLowPassFrequency)
+      .map(singleConfig => {
+        let cast = (singleConfig as RotationControllerConfig);
+        cast.rotationTuneSpeed = +this.configService.config.rotationTuneSpeed.toPrecision(3);
+        return cast;
+      })
+
+    let existing = this.configService.config.rotationConfigs || []
+    this.configService.config.rotationConfigs = [...configValues, ...existing]
 
     this.command(0);
   }

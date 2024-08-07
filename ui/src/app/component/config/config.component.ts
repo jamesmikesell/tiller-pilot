@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
 import { BtMotorControllerService } from 'src/app/service/bt-motor-controller.service';
-import { ConfigService } from 'src/app/service/config.service';
+import { ConfigService, ControllerConfig, RotationControllerConfig } from 'src/app/service/config.service';
 import { ControllerOrientationService } from 'src/app/service/controller-orientation.service';
 import { ControllerRotationRateService } from 'src/app/service/controller-rotation-rate.service';
 import { DataLogService } from 'src/app/service/data-log.service';
@@ -17,6 +17,8 @@ import { TuningResult } from 'src/app/service/pid-tuner';
 export class ConfigComponent implements OnInit {
 
   btConnected = false;
+  selectedRotationConfig: RotationControllerConfig[];
+  selectedOrientationConfig: ControllerConfig[];
 
 
   private motorControllerService: MockBoatSensorAndTillerController | BtMotorControllerService;
@@ -49,6 +51,63 @@ export class ConfigComponent implements OnInit {
   }
 
 
+  loadSelectedRotation(): void {
+    let selected = this.selectedRotationConfig[0];
+    this.configService.config.rotationKp = selected.kP;
+    this.configService.config.rotationKi = selected.kI;
+    this.configService.config.rotationKd = selected.kD;
+    this.configService.config.rotationPidDerivativeLowPassFrequency = selected.derivativeLowPassFrequency;
+    this.configService.config.rotationLowPassFrequency = selected.lowPassFrequency;
+    this.configService.config.rotationTuneSpeed = selected.rotationTuneSpeed;
+
+    this.selectedRotationConfig = undefined;
+  }
+
+
+  deleteSelectedRotation() {
+    let selected = new Set(this.selectedRotationConfig);
+    this.configService.config.rotationConfigs = this.configService.config.rotationConfigs
+      .filter(single => !selected.has(single));
+
+    this.selectedRotationConfig = undefined;
+  }
+
+
+  addCurrentRotation(): void {
+    let title = prompt("Enter name for config");
+    if (title)
+      this.configService.addCurrentRotationToConfigs(title);
+  }
+
+
+  loadSelectedOrientation(): void {
+    let selected = this.selectedOrientationConfig[0];
+    this.configService.config.orientationKp = selected.kP;
+    this.configService.config.orientationKi = selected.kI;
+    this.configService.config.orientationKd = selected.kD;
+    this.configService.config.orientationPidDerivativeLowPassFrequency = selected.derivativeLowPassFrequency;
+    this.configService.config.orientationLowPassFrequency = selected.lowPassFrequency;
+
+    this.selectedOrientationConfig = undefined;
+  }
+
+
+  deleteSelectedOrientation() {
+    let selected = new Set(this.selectedOrientationConfig);
+    this.configService.config.orientationConfigs = this.configService.config.orientationConfigs
+      .filter(single => !selected.has(single));
+
+    this.selectedOrientationConfig = undefined;
+  }
+
+
+  addCurrentOrientation(): void {
+    let title = prompt("Enter name for config");
+    if (title)
+      this.configService.addCurrentOrientationToConfigs(title);
+  }
+
+
   async tuneRotationOnly(): Promise<TuningResult> {
     setTimeout(() => {
       this.dataLog.clearLogData();
@@ -78,21 +137,6 @@ export class ConfigComponent implements OnInit {
       this.snackBar.open(`Orientation PID Tune Failed: ${tuneResult.description}`, "Dismiss")
 
     return tuneResult;
-  }
-
-
-  async tuneAll(): Promise<void> {
-    let rotationRateResults = await this.tuneRotationOnly();
-    if (!rotationRateResults.success)
-      return;
-    this.snackBar.open("1/2 - Rot. Rt. PID Tune Complete", "Dismiss")
-
-    let orientationResult = await this.tuneOrientationOnly();
-    if (!orientationResult.success)
-      return;
-    this.snackBar.open("2/2 - Orientation PID Tune Complete", "Dismiss")
-
-    this.controllerOrientation.maintainCurrentHeading();
   }
 
 
