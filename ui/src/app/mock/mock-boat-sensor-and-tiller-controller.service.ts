@@ -15,8 +15,7 @@ export class MockBoatSensorAndTillerController implements Controller {
   heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, INITIAL_HEADING));
   connected = new BehaviorSubject<boolean>(true);
   enabled = false;
-  get headingCurrentWithoutError(): number { return this.moveQueue[0].real }
-  get currentMotorPower(): number { return this.tillerGainDegreesPerSecond / this.tillerPowerCoefficient };
+
 
   private moveQueue: SensorWithNoise[] = [
     new SensorWithNoise(INITIAL_HEADING, INITIAL_HEADING, 0),
@@ -24,9 +23,7 @@ export class MockBoatSensorAndTillerController implements Controller {
   ];
   private tillerGainDegreesPerSecond = 0;
   private nextTillerDegreesPerSecond = 0;
-  private tillerPowerCoefficient = 0.2;
   private previousTime: number;
-
 
   constructor(
     private configService: ConfigService,
