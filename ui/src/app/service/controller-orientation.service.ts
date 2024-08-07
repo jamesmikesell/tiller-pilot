@@ -166,7 +166,7 @@ export class ControllerOrientationService {
     this.configService.config.orientationKi = +tuningMethod.kI.toPrecision(4);
     this.configService.config.orientationKd = +tuningMethod.kD.toPrecision(4);
 
-    this.configurePidController();
+    this.maintainCurrentHeading();
   }
 
 
