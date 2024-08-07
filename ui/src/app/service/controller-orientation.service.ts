@@ -92,17 +92,20 @@ export class ControllerOrientationService {
 
     const errorFiltered = this.errorFilter.process(errorRaw, heading.time)
 
-    this.processPidAutoTuneUpdate(errorFiltered, heading.time);
+    let command: number;
+    if (this.tuner) {
+      command = this.tuner.sensorValueUpdated(errorFiltered, heading.time);
+    } else {
+      command = this.pidController.update(errorFiltered, heading.time);
 
-    let command = this.pidController.update(errorFiltered, heading.time);
+      const maxRate = this.rotationRateController.maxRotationRate;
+      this.pidController.saturationReached = Math.abs(command) > maxRate;
+      command = Math.max(command, -maxRate)
+      command = Math.min(command, maxRate)
 
-    const maxRate = this.rotationRateController.maxRotationRate;
-    this.pidController.saturationReached = Math.abs(command) > maxRate;
-    command = Math.max(command, -maxRate)
-    command = Math.min(command, maxRate)
-
-    if (this._enabled)
-      this.rotationRateController.desired = command;
+      if (this._enabled)
+        this.rotationRateController.desired = command;
+    }
 
 
     let logData = new ControllerOrientationLogData(
@@ -154,11 +157,6 @@ export class ControllerOrientationService {
       description: "PID Tuning Canceled",
       suggestedValues: undefined,
     })
-  }
-
-
-  private processPidAutoTuneUpdate(headingError: number, time: number): void {
-    this.tuner?.sensorValueUpdated(headingError, time);
   }
 
 

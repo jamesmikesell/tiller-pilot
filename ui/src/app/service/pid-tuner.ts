@@ -19,7 +19,7 @@ export class PidTuner {
   ) { }
 
 
-  sensorValueUpdated(value: number, time: number): void {
+  sensorValueUpdated(value: number, time: number): number {
     let noiseBand = this.config.noiseBand;
     if (this.cyclesCompleted >= this.config.disableNoiseBandAfterCycle)
       noiseBand = 0;
@@ -63,7 +63,7 @@ export class PidTuner {
             description: "Tunning completed successfully",
             suggestedValues: suggestedPidValues,
           })
-          return;
+          return 0;
         }
 
         this.mostRecent2CyclePeaks.splice(0, this.mostRecent2CyclePeaks.length - 3)
@@ -81,10 +81,11 @@ export class PidTuner {
         description: "PID Tuning timed out without finding consistent results",
         suggestedValues: undefined,
       })
-      return;
+      return 0;
     }
 
     this.controller.command(command);
+    return command;
   }
 
 

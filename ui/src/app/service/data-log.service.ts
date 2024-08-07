@@ -69,7 +69,6 @@ export class DataLogService {
 
       this.lastControllerRotationRate?.rotationRateDesired,
       this.lastControllerRotationRate?.rotationRateCurrent,
-      this.lastControllerRotationRate?.rotationRateErrorRaw,
       this.lastControllerRotationRate?.rotationRateReal,
       this.lastControllerRotationRate?.rotationRateCommand,
     ));
@@ -102,7 +101,6 @@ class LogData {
 
     public rotationRateDesired: number,
     public rotationRateCurrent: number,
-    public rotationRateErrorRaw: number,
     public rotationRateReal: number,
     public rotationRateCommand: number,
   ) { }
@@ -125,7 +123,6 @@ export class ControllerRotationRateLogData {
   constructor(
     public rotationRateDesired: number,
     public rotationRateCurrent: number,
-    public rotationRateErrorRaw: number,
     public rotationRateReal: number,
     public rotationRateCommand: number,
   ) { }

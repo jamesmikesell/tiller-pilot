@@ -110,33 +110,35 @@ export class ControllerRotationRateService implements Controller {
 
       let timeDeltaSeconds = (heading.time - this.previousHeading.time) / 1000;
       let rawRotationRate = this.getGetRotationAmount(heading.heading, this.previousHeading.heading) / timeDeltaSeconds;
-      let speedMultiplier = 1;
-      if (!this.tuner && this.configService.config.rotationTuneSpeed)
-        speedMultiplier = this.configService.config.rotationTuneSpeed / speed;
 
       let filteredRotationRate = this.filter.process(rawRotationRate, heading.time);
-      this.processPidAutoTuneUpdate(filteredRotationRate, heading.time);
+      let command: number;
+      if (this.tuner) {
+        command = this.tuner.sensorValueUpdated(filteredRotationRate, heading.time);
+      } else {
+        let maxRotationRate = this.configService.config.maxTurnRateDegreesPerSecondPerKt * speed;
+        let limitedDesired = Math.min(this.desired, maxRotationRate);
+        limitedDesired = Math.max(limitedDesired, -maxRotationRate);
+        let error = filteredRotationRate - limitedDesired;
 
-      let maxRotationRate = this.configService.config.maxTurnRateDegreesPerSecondPerKt * speed;
-      let limitedDesired = Math.min(this.desired, maxRotationRate);
-      limitedDesired = Math.max(limitedDesired, -maxRotationRate);
-      let error = filteredRotationRate - limitedDesired;
+        let speedMultiplier = 1;
+        if (this.configService.config.rotationTuneSpeed)
+          speedMultiplier = this.configService.config.rotationTuneSpeed / speed;
 
+        command = this.pidController.update(error * speedMultiplier, heading.time);
+        this.pidController.saturationReached = Math.abs(command) >= 1;
+        command = Math.max(command, -1)
+        command = Math.min(command, 1)
 
-      let command = this.pidController.update(error * speedMultiplier, heading.time);
-      this.pidController.saturationReached = Math.abs(command) >= 1;
-      command = Math.max(command, -1)
-      command = Math.min(command, 1)
-
-      const useAutoPilot = this.motorService.connected.value && this.enabled;
-      if (useAutoPilot)
-        this.motorService.command(command);
+        const useAutoPilot = this.motorService.connected.value && this.enabled;
+        if (useAutoPilot)
+          this.motorService.command(command);
+      }
 
 
       let logData = new ControllerRotationRateLogData(
         this.desired,
         filteredRotationRate,
-        error,
         this.deviceSelectService.mockBoat.rotationRateReal(),
         command,
       )
@@ -167,11 +169,6 @@ export class ControllerRotationRateService implements Controller {
       description: "PID Tuning Canceled",
       suggestedValues: undefined,
     })
-  }
-
-
-  private processPidAutoTuneUpdate(rotationRate: number, time: number): void {
-    this.tuner?.sensorValueUpdated(rotationRate, time);
   }
 
 
