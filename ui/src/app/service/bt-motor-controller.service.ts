@@ -20,23 +20,18 @@ export class BtMotorControllerService implements Controller {
         if (!this.connected.value)
           return;
 
-        if (this.nextPowerLevel === 0)
-          this.stop();
-        else if (this.nextPowerLevel > 0)
-          this.move(Direction.RIGHT, this.nextPowerLevel)
-        else
-          this.move(Direction.LEFT, Math.abs(this.nextPowerLevel))
+        let direction = this.nextPowerLevel > 0 ? Direction.RIGHT : Direction.LEFT;
+        this.move(direction, Math.abs(this.nextPowerLevel))
       });
-
   }
 
 
   disconnect(): void {
-    if (this.gatt){
+    if (this.gatt) {
       this.characteristic = undefined;
       this.connected.next(false);
       this.gatt.disconnect();
-      this.gatt = undefined;  
+      this.gatt = undefined;
     }
   }
 
@@ -71,10 +66,6 @@ export class BtMotorControllerService implements Controller {
   }
 
 
-  stop(): void {
-    this.characteristic.writeValue(new Uint8Array([0, Direction.LEFT]));
-  }
-
   private async move(direction: Direction, powerPercent: number): Promise<void> {
     let level = Math.round(powerPercent * 255);
     this.characteristic.writeValue(new Uint8Array([level, direction]));
@@ -83,6 +74,10 @@ export class BtMotorControllerService implements Controller {
 
   command(level: number): void {
     this.nextPowerLevel = level;
+  }
+
+  stop(): void {
+    this.command(0);
   }
 
 
