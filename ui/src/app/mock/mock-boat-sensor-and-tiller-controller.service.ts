@@ -2,20 +2,16 @@ import { Injectable } from "@angular/core";
 import { BehaviorSubject, timer } from "rxjs";
 import { ConfigService } from "../service/config.service";
 import { Controller } from "../service/controller";
-import { HeadingAndTime } from "../service/sensor-orientation.service";
+import { ConnectableDevice } from "../service/controller-bt-motor.service";
+import { SpeedSensor } from "../service/sensor-gps.service";
+import { HeadingAndTime, OrientationSensor } from "../service/sensor-orientation.service";
+import { UnitConverter } from "../service/unit-converter";
 
 
 @Injectable({
   providedIn: 'root'
 })
-export class MockBoatSensorAndTillerController implements Controller {
-
-
-  tillerAngle = -0.1;
-  heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, INITIAL_HEADING));
-  connected = new BehaviorSubject<boolean>(true);
-  enabled = false;
-
+export class MockBoatSensorAndTillerController {
 
   private moveQueue: SensorWithNoise[] = [
     new SensorWithNoise(INITIAL_HEADING, INITIAL_HEADING, 0),
@@ -24,6 +20,9 @@ export class MockBoatSensorAndTillerController implements Controller {
   private tillerGainDegreesPerSecond = 0;
   private nextTillerDegreesPerSecond = 0;
   private previousTime: number;
+  private heading = new BehaviorSubject<HeadingAndTime>(new HeadingAndTime(0, INITIAL_HEADING));
+  private tillerAngle = -0.1;
+  private connected = new BehaviorSubject<boolean>(true);
 
   constructor(
     private configService: ConfigService,
@@ -69,8 +68,30 @@ export class MockBoatSensorAndTillerController implements Controller {
   }
 
 
-  getSpeedKt(): number {
-    return this.configService.config.simulationSpeedKt;
+  getSpeedSensor(): SpeedSensor {
+    return {
+      getSpeedMps: () => { return UnitConverter.ktToMps(this.configService.config.simulationSpeedKt); }
+    }
+  }
+
+
+  getOrientationSensor(): OrientationSensor {
+    let self = this;
+    return {
+      heading: self.heading,
+    }
+  }
+
+
+  getMotorController(): Controller & ConnectableDevice {
+    let self = this;
+    return {
+      command(level: number) { self.command(level) },
+      connect(): Promise<void> { return self.connect() },
+      connected: self.connected,
+      disconnect() { self.disconnect() },
+      stop() { self.stop() },
+    }
   }
 
 
@@ -93,22 +114,23 @@ export class MockBoatSensorAndTillerController implements Controller {
   }
 
 
-  command(level: number): void {
+  private command(level: number): void {
     this.nextTillerDegreesPerSecond = level * 0.2;
   }
 
 
-  stop(): void {
+  private stop(): void {
     this.nextTillerDegreesPerSecond = 0;
   }
 
 
-  connect(): void {
+  private connect(): Promise<void> {
     this.connected.next(true);
+    return Promise.resolve();
   }
 
 
-  disconnect(): void {
+  private disconnect(): void {
     this.connected.next(false);
   }
 

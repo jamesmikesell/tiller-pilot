@@ -5,7 +5,7 @@ import { Controller } from './controller';
 @Injectable({
   providedIn: 'root'
 })
-export class BtMotorControllerService implements Controller {
+export class ControllerBtMotorService implements Controller, ConnectableDevice {
 
   connected = new BehaviorSubject<boolean>(false);
 
@@ -92,4 +92,11 @@ export class BtMotorControllerService implements Controller {
 enum Direction {
   RIGHT = 1,
   LEFT = 0,
+}
+
+export interface ConnectableDevice {
+  connected: BehaviorSubject<boolean>;
+
+  connect(): Promise<void>
+  disconnect(): void;
 }

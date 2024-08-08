@@ -17,7 +17,7 @@
   Heading Desired: {{controllerOrientation.desired | number:'1.0-0'}} <br>
   Controllers: Rotation: {{controllerRotationRate.enabled ? "on" : "off"}} Orientation: {{controllerOrientation.enabled
   ? "on" : "off"}} <br>
-  Speed (kt): {{sensorLocation.getSpeedKt() | number:'1.2-2'}} <br>
+  Speed (kt): {{UnitConverter.mpsToKts(sensorLocation.getSpeedMps()) | number:'1.2-2'}} <br>
 </div>
 
 

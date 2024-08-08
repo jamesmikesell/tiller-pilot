@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
-import { BtMotorControllerService } from 'src/app/service/bt-motor-controller.service';
 import { ConfigService, ControllerConfig, RotationControllerConfig } from 'src/app/service/config.service';
+import { Controller } from 'src/app/service/controller';
+import { ConnectableDevice } from 'src/app/service/controller-bt-motor.service';
 import { ControllerOrientationService } from 'src/app/service/controller-orientation.service';
 import { ControllerRotationRateService } from 'src/app/service/controller-rotation-rate.service';
 import { DataLogService } from 'src/app/service/data-log.service';
 import { DeviceSelectService } from 'src/app/service/device-select.service';
 import { TuningResult } from 'src/app/service/pid-tuner';
+import { UnitConverter } from 'src/app/service/unit-converter';
 
 @Component({
   selector: 'app-config',
@@ -21,7 +22,7 @@ export class ConfigComponent implements OnInit {
   selectedOrientationConfig: ControllerConfig[];
 
 
-  private motorControllerService: MockBoatSensorAndTillerController | BtMotorControllerService;
+  private motorControllerService: Controller & ConnectableDevice;
 
 
   constructor(
@@ -58,7 +59,7 @@ export class ConfigComponent implements OnInit {
     this.configService.config.rotationKd = selected.kD;
     this.configService.config.rotationPidDerivativeLowPassFrequency = selected.derivativeLowPassFrequency;
     this.configService.config.rotationLowPassFrequency = selected.lowPassFrequency;
-    this.configService.config.rotationTuneSpeed = selected.rotationTuneSpeed;
+    this.configService.config.rotationTuneSpeedKts = UnitConverter.mpsToKts(selected.rotationTuneSpeedMps);
 
     this.selectedRotationConfig = undefined;
   }

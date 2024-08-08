@@ -1,15 +1,16 @@
 import { Component, HostListener, OnInit } from '@angular/core';
 import { timer } from 'rxjs';
-import { MockBoatSensorAndTillerController } from 'src/app/mock/mock-boat-sensor-and-tiller-controller.service';
-import { BtMotorControllerService } from 'src/app/service/bt-motor-controller.service';
 import { ConfigService } from 'src/app/service/config.service';
+import { Controller } from 'src/app/service/controller';
+import { ConnectableDevice } from 'src/app/service/controller-bt-motor.service';
 import { ControllerOrientationService } from 'src/app/service/controller-orientation.service';
 import { ControllerRotationRateService } from 'src/app/service/controller-rotation-rate.service';
+import { CoordinateUtils } from 'src/app/service/coordinate-utils';
 import { DataLogService } from 'src/app/service/data-log.service';
 import { DeviceSelectService } from 'src/app/service/device-select.service';
-import { SensorGpsService } from 'src/app/service/sensor-gps.service';
-import { SensorNavigationService } from 'src/app/service/sensor-navigation.service';
-import { SensorOrientationService } from 'src/app/service/sensor-orientation.service';
+import { SensorGpsService, SpeedSensor } from 'src/app/service/sensor-gps.service';
+import { OrientationSensor } from 'src/app/service/sensor-orientation.service';
+import { UnitConverter } from 'src/app/service/unit-converter';
 import { WakeLockService } from 'src/app/service/wake-lock.service';
 import { AppChartData } from '../chart/chart.component';
 
@@ -24,12 +25,12 @@ export class TestComponent implements OnInit {
   chartNavigation: AppChartData[] = [];
   chartGpsHeading: AppChartData[] = [];
   btConnected = false;
-  sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
-  sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
+  sensorOrientation: OrientationSensor;
+  sensorLocation: SpeedSensor;
   blackoutScreen = false;
+  UnitConverter = UnitConverter;
 
-
-  private motorControllerService: MockBoatSensorAndTillerController | BtMotorControllerService;
+  private motorControllerService: Controller & ConnectableDevice;
 
 
   constructor(
@@ -95,7 +96,7 @@ export class TestComponent implements OnInit {
   }
 
   private updateReceived(): void {
-    let distanceKm = SensorNavigationService.calculateDistanceFromLineMeters(
+    let distanceKm = CoordinateUtils.calculateDistanceFromLineMeters(
       this.gpsLat,
       this.gpsLon,
       this.gpsHeading,
@@ -106,7 +107,7 @@ export class TestComponent implements OnInit {
     let logData = new LocationLogData(
       this.sensorGpsService.latitude,
       this.sensorGpsService.longitude,
-      this.sensorGpsService.getSpeedKt(),
+      UnitConverter.mpsToKts(this.sensorGpsService.getSpeedMps()),
       distanceKm,
       this.sensorGpsService.currentHeading
     )

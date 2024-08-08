@@ -5,7 +5,7 @@ import { LocationHistorySpeedTracker } from './location-history-speed-calculator
 @Injectable({
   providedIn: 'root'
 })
-export class SensorGpsService {
+export class SensorGpsService implements SpeedSensor {
 
   desired = 0;
   currentHeading = 0
@@ -13,7 +13,7 @@ export class SensorGpsService {
   latitude = 0;
   longitude = 0;
 
-  private speedKt = 0;
+  private speedMps = 0;
   private speedTracker = new LocationHistorySpeedTracker();
 
   constructor() {
@@ -30,24 +30,18 @@ export class SensorGpsService {
     this.longitude = locationData.coords.longitude;
 
     this.speedTracker.tryAddLocationToHistory(locationData);
-    this.speedKt = this.speedTracker.getSpeedInKtsFromHistory();
+    this.speedMps = this.speedTracker.getSpeedMpsFromHistory();
 
     this.update.next();
   }
 
 
-  getSpeedKt(): number {
-    return this.speedKt;
+  getSpeedMps(): number {
+    return this.speedMps;
   }
 
-  getError(): number {
-    let error = this.currentHeading - this.desired;
-    if (error > 180)
-      return error - 360;
-    if (error < -180)
-      return error + 360;
+}
 
-    return error;
-  }
-
+export interface SpeedSensor {
+  getSpeedMps(): number
 }

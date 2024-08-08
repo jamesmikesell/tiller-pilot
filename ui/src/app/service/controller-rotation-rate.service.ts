@@ -1,7 +1,5 @@
 import { Injectable } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
-import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
-import { BtMotorControllerService } from './bt-motor-controller.service';
 import { ConfigService, PidTuneSaver, RotationControllerConfig } from './config.service';
 import { Controller } from './controller';
 import { ControllerRotationRateLogData, DataLogService } from './data-log.service';
@@ -9,8 +7,9 @@ import { DeviceSelectService } from './device-select.service';
 import { Filter, LowPassFilter } from './filter';
 import { PidConfig, PidController } from './pid-controller';
 import { PidTuner, PidTuningSuggestedValues, TuneConfig, TuningResult } from './pid-tuner';
-import { SensorGpsService } from './sensor-gps.service';
-import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
+import { SpeedSensor } from './sensor-gps.service';
+import { HeadingAndTime } from './sensor-orientation.service';
+import { UnitConverter } from './unit-converter';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +26,10 @@ export class ControllerRotationRateService implements Controller {
     }
   }
 
-  get maxRotationRate(): number { return this.configService.config.maxTurnRateDegreesPerSecondPerKt * this.sensorLocation.getSpeedKt() }
+  get maxRotationRate(): number {
+    let speedKts = UnitConverter.mpsToKts(this.sensorLocation.getSpeedMps());
+    return this.configService.config.maxTurnRateDegreesPerSecondPerKt * speedKts
+  }
   desired = 0;
   lastErrorFiltered: number;
 
@@ -37,11 +39,10 @@ export class ControllerRotationRateService implements Controller {
   private filter = this.getFilter();
   private _enabled = false;
   private tuner: PidTuner;
-  private sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
-  private motorService: MockBoatSensorAndTillerController | BtMotorControllerService;
+  private motorService: Controller;
   private previousHeading: HeadingAndTime;
   private pidTuneComplete = new Subject<TuningResult>();
-  private sensorLocation: SensorGpsService | MockBoatSensorAndTillerController;
+  private sensorLocation: SpeedSensor;
 
 
   constructor(
@@ -50,13 +51,13 @@ export class ControllerRotationRateService implements Controller {
     private configService: ConfigService,
   ) {
     this.motorService = deviceSelectService.motorController;
-    this.sensorOrientation = deviceSelectService.orientationSensor;
     this.sensorLocation = deviceSelectService.locationSensor;
 
 
     this.configurePidController();
 
-    this.sensorOrientation.heading.subscribe(heading => this.updateReceived(heading))
+    let sensorOrientation = deviceSelectService.orientationSensor;
+    sensorOrientation.heading.subscribe(heading => this.updateReceived(heading))
   }
 
 
@@ -104,9 +105,9 @@ export class ControllerRotationRateService implements Controller {
         return;
 
       // disabling speed compensation if we're truly stopped
-      let speed = 1;
-      if (this.sensorLocation.getSpeedKt() > 0.01)
-        speed = this.sensorLocation.getSpeedKt();
+      let speedMps = 1;
+      if (this.sensorLocation.getSpeedMps() > 0.01)
+        speedMps = this.sensorLocation.getSpeedMps();
 
       let timeDeltaSeconds = (heading.time - this.previousHeading.time) / 1000;
       let rawRotationRate = this.getGetRotationAmount(heading.heading, this.previousHeading.heading) / timeDeltaSeconds;
@@ -116,22 +117,21 @@ export class ControllerRotationRateService implements Controller {
       if (this.tuner) {
         command = this.tuner.sensorValueUpdated(filteredRotationRate, heading.time);
       } else {
-        let maxRotationRate = this.configService.config.maxTurnRateDegreesPerSecondPerKt * speed;
+        let maxRotationRate = UnitConverter.ktToMps(this.configService.config.maxTurnRateDegreesPerSecondPerKt) * speedMps;
         let limitedDesired = Math.min(this.desired, maxRotationRate);
         limitedDesired = Math.max(limitedDesired, -maxRotationRate);
         let error = filteredRotationRate - limitedDesired;
 
         let speedMultiplier = 1;
-        if (this.configService.config.rotationTuneSpeed)
-          speedMultiplier = this.configService.config.rotationTuneSpeed / speed;
+        if (this.configService.config.rotationTuneSpeedKts)
+          speedMultiplier = UnitConverter.ktToMps(this.configService.config.rotationTuneSpeedKts) / speedMps;
 
         command = this.pidController.update(error * speedMultiplier, heading.time);
         this.pidController.saturationReached = Math.abs(command) >= 1;
         command = Math.max(command, -1)
         command = Math.min(command, 1)
 
-        const useAutoPilot = this.motorService.connected.value && this.enabled;
-        if (useAutoPilot)
+        if (this.enabled)
           this.motorService.command(command);
       }
 
@@ -177,14 +177,16 @@ export class ControllerRotationRateService implements Controller {
     this.configService.config.rotationKp = +tuningMethod.kP.toPrecision(4);
     this.configService.config.rotationKi = +tuningMethod.kI.toPrecision(4);
     this.configService.config.rotationKd = +tuningMethod.kD.toPrecision(4);
-    this.configService.config.rotationTuneSpeed = +this.sensorLocation.getSpeedKt().toPrecision(3);
+    this.configService.config.rotationTuneSpeedKts = +UnitConverter
+      .mpsToKts(this.sensorLocation.getSpeedMps())
+      .toPrecision(3);
 
     let configValues = PidTuneSaver.convert(suggestedPidValues,
       this.configService.config.rotationLowPassFrequency,
       this.configService.config.rotationPidDerivativeLowPassFrequency)
       .map(singleConfig => {
         let cast = (singleConfig as RotationControllerConfig);
-        cast.rotationTuneSpeed = +this.configService.config.rotationTuneSpeed.toPrecision(3);
+        cast.rotationTuneSpeedMps = +this.sensorLocation.getSpeedMps().toPrecision(3);
         return cast;
       })
 

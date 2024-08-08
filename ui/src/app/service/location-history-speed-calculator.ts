@@ -1,4 +1,4 @@
-import { SensorNavigationService } from './sensor-navigation.service';
+import { CoordinateUtils } from './coordinate-utils';
 
 export class LocationHistorySpeedTracker {
 
@@ -24,7 +24,7 @@ export class LocationHistorySpeedTracker {
     if (this.locationHistory.length > 0) {
       this.lastLocation = currentLocation;
       let currentLocationIsCloseToHistory = this.locationHistory
-        .map(single => SensorNavigationService.haversineDistanceInMeters(single, currentLocation))
+        .map(single => CoordinateUtils.haversineDistanceInMeters(single, currentLocation))
         .some(singleDistance => singleDistance < minAccuracyMeters)
 
       if (currentLocationIsCloseToHistory)
@@ -37,17 +37,17 @@ export class LocationHistorySpeedTracker {
   }
 
 
-  getSpeedInKtsFromHistory(): number {
+  getSpeedMpsFromHistory(): number {
     if (this.locationHistory.length === 0 || !this.lastLocation)
       return 0;
 
     let oldest = this.locationHistory[0];
     let newest = this.lastLocation;
-    let distanceMeters = SensorNavigationService.haversineDistanceInMeters(newest, oldest);
+    let distanceMeters = CoordinateUtils.haversineDistanceInMeters(newest, oldest);
 
     let timeInMs = newest.time.getTime() - oldest.time.getTime();
     let speedMetersPerSec = distanceMeters / (timeInMs / 1000);
-    return speedMetersPerSec * 1.94384;
+    return speedMetersPerSec;
   }
 
 }

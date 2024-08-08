@@ -1,5 +1,5 @@
 
-export class SensorNavigationService {
+export class CoordinateUtils {
 
   private static readonly EARTH_RADIUS_METERS = 6371e3;
 
@@ -12,11 +12,11 @@ export class SensorNavigationService {
     longitudeCurrent: number
   ): number {
     // Convert degrees to radians
-    const latitudeStartRad = SensorNavigationService.toRadians(latitudeStart);
-    const longitudeStartRad = SensorNavigationService.toRadians(longitudeStart);
-    const latitudeCurrentRad = SensorNavigationService.toRadians(latitudeCurrent);
-    const longitudeCurrentRad = SensorNavigationService.toRadians(longitudeCurrent);
-    const headingRad = SensorNavigationService.toRadians(headingDegrees);
+    const latitudeStartRad = CoordinateUtils.toRadians(latitudeStart);
+    const longitudeStartRad = CoordinateUtils.toRadians(longitudeStart);
+    const latitudeCurrentRad = CoordinateUtils.toRadians(latitudeCurrent);
+    const longitudeCurrentRad = CoordinateUtils.toRadians(longitudeCurrent);
+    const headingRad = CoordinateUtils.toRadians(headingDegrees);
 
     // Calculate great circle bearing between starting point and current point
     const deltaLongitude = longitudeCurrentRad - longitudeStartRad;
@@ -38,7 +38,7 @@ export class SensorNavigationService {
       Math.sin(deltaLongitude / 2) *
       Math.sin(deltaLongitude / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = SensorNavigationService.EARTH_RADIUS_METERS * c;
+    const distance = CoordinateUtils.EARTH_RADIUS_METERS * c;
 
     // Calculate perpendicular distance from the line to the current point
     const perpendicularDistance = distance * Math.sin(bearingDifference);
@@ -58,7 +58,7 @@ export class SensorNavigationService {
 
 
   static calculateNewPosition(start: Location, distanceMeters: number, angleDegrees: number): Location {
-    const angularDistance = distanceMeters / SensorNavigationService.EARTH_RADIUS_METERS;
+    const angularDistance = distanceMeters / CoordinateUtils.EARTH_RADIUS_METERS;
     const bearing = this.toRadians(angleDegrees);
 
     const lat1 = this.toRadians(start.latitude);
@@ -89,7 +89,7 @@ export class SensorNavigationService {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    const distance = SensorNavigationService.EARTH_RADIUS_METERS * c;
+    const distance = CoordinateUtils.EARTH_RADIUS_METERS * c;
     return distance;
   }
 

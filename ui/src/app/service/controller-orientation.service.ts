@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
-import { MockBoatSensorAndTillerController } from '../mock/mock-boat-sensor-and-tiller-controller.service';
 import { ConfigService, PidTuneSaver } from './config.service';
 import { ControllerRotationRateService } from './controller-rotation-rate.service';
 import { ControllerOrientationLogData, DataLogService } from './data-log.service';
@@ -9,7 +8,7 @@ import { Filter, LowPassFilter } from './filter';
 import { HeadingStats } from './heading-stats';
 import { PidConfig, PidController } from './pid-controller';
 import { PidTuner, PidTuningSuggestedValues, TuneConfig, TuningResult } from './pid-tuner';
-import { HeadingAndTime, SensorOrientationService } from './sensor-orientation.service';
+import { HeadingAndTime } from './sensor-orientation.service';
 
 @Injectable({
   providedIn: 'root'
@@ -30,7 +29,6 @@ export class ControllerOrientationService {
   private headingHistory: number[] = [];
   private _enabled = false;
   private tuner: PidTuner;
-  private sensorOrientation: SensorOrientationService | MockBoatSensorAndTillerController;
   private pidTuneComplete = new Subject<TuningResult>();
 
 
@@ -41,11 +39,10 @@ export class ControllerOrientationService {
     private configService: ConfigService,
     private dataLog: DataLogService,
   ) {
-    this.sensorOrientation = deviceSelectService.orientationSensor;
-
     this.configurePidController();
 
-    this.sensorOrientation.heading.subscribe(heading => this.updateReceived(heading))
+    let sensorOrientation = deviceSelectService.orientationSensor;
+    sensorOrientation.heading.subscribe(heading => this.updateReceived(heading))
   }
 
 

@@ -1,5 +1,5 @@
 
-import { SensorNavigationService } from './sensor-navigation.service';
+import { CoordinateUtils } from './coordinate-utils';
 
 describe('SensorNavigationService', () => {
 
@@ -13,7 +13,7 @@ describe('SensorNavigationService', () => {
     const latitudeCurrent = 41.893676;
     const longitudeCurrent = 12.498112;
 
-    expect(SensorNavigationService.calculateDistanceFromLineMeters(
+    expect(CoordinateUtils.calculateDistanceFromLineMeters(
       latitudeStart,
       longitudeStart,
       headingDegrees,
@@ -27,7 +27,7 @@ describe('SensorNavigationService', () => {
     const latitudeCurrent = 41.913454;
     const longitudeCurrent = 12.521008;
 
-    expect(SensorNavigationService.calculateDistanceFromLineMeters(
+    expect(CoordinateUtils.calculateDistanceFromLineMeters(
       latitudeStart,
       longitudeStart,
       headingDegrees,
@@ -41,7 +41,7 @@ describe('SensorNavigationService', () => {
     const latitudeCurrent = 41.834777;
     const longitudeCurrent = 12.423430;
 
-    expect(SensorNavigationService.calculateDistanceFromLineMeters(
+    expect(CoordinateUtils.calculateDistanceFromLineMeters(
       latitudeStart,
       longitudeStart,
       headingDegrees,
@@ -55,7 +55,7 @@ describe('SensorNavigationService', () => {
     const latitudeCurrent = 41.826685;
     const longitudeCurrent = 12.594337;
 
-    expect(SensorNavigationService.calculateDistanceFromLineMeters(
+    expect(CoordinateUtils.calculateDistanceFromLineMeters(
       latitudeStart,
       longitudeStart,
       headingDegrees,
@@ -69,7 +69,7 @@ describe('SensorNavigationService', () => {
     const latitudeCurrent = 41.942913;
     const longitudeCurrent = 12.458052;
 
-    expect(SensorNavigationService.calculateDistanceFromLineMeters(
+    expect(CoordinateUtils.calculateDistanceFromLineMeters(
       latitudeStart,
       longitudeStart,
       headingDegrees,
@@ -86,8 +86,8 @@ describe('SensorNavigationService', () => {
       longitude: 37.2,
     }
 
-    let position2 = SensorNavigationService.calculateNewPosition(start, 1, 30);
-    let distance = SensorNavigationService.haversineDistanceInMeters(start, position2);
+    let position2 = CoordinateUtils.calculateNewPosition(start, 1, 30);
+    let distance = CoordinateUtils.haversineDistanceInMeters(start, position2);
 
     expect(distance).toBeCloseTo(1, 5);
   });
